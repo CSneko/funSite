@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <!-- 针对移动端优化：禁止缩放，全屏显示 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>霓虹气泡戳戳乐</title>
+    <style>
+        /* 基础重置与防误触设置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            /* 禁用移动端的点击高亮和默认触摸行为（如滑动翻页） */
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none; 
+            user-select: none;
+        }
+
+        body {
+            background-color: #0f0f13;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; /* 防止出现滚动条 */
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* 顶部UI面板 */
+        #ui-panel {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+            z-index: 100;
+            pointer-events: none; /* 让点击穿透UI层 */
+        }
+
+        /* 开始/结束屏幕 */
+        #menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 15, 19, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            backdrop-filter: blur(5px);
+        }
+
+        #menu h1 {
+            font-size: 40px;
+            margin-bottom: 10px;
+            color: #0ff;
+            text-shadow: 0 0 20px #0ff;
+            text-align: center;
+        }
+
+        #menu p {
+            font-size: 18px;
+            color: #aaa;
+            margin-bottom: 40px;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(45deg, #ff007f, #7000ff);
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(255, 0, 127, 0.6);
+            transition: transform 0.1s;
+        }
+
+        .btn:active {
+            transform: scale(0.9);
+        }
+
+        /* 气泡样式 */
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            cursor: pointer;
+            animation: spawn 0.3s ease-out forwards;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 气泡出生动画 */
+        @keyframes spawn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* 气泡被戳破的动画 */
+        @keyframes pop {
+            0% { transform: scale(1); opacity: 1; filter: brightness(1); }
+            100% { transform: scale(2); opacity: 0; filter: brightness(2); }
+        }
+
+        /* 加分飘字效果 */
+        .floating-text {
+            position: absolute;
+            color: #fff;
+            font-size: 20px;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 0.6s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <div>得分: <span id="score">0</span></div>
+        <div>时间: <span id="time">30</span>s</div>
+    </div>
+
+    <div id="menu">
+        <h1 id="menu-title">霓虹气泡戳戳乐</h1>
+        <p>用手指疯狂戳破气泡，挑战最高分！</p>
+        <button class="btn" id="start-btn">开始游戏</button>
+    </div>
+
+    <script>
+        // 游戏核心变量
+        let score = 0;
+        let timeLeft = 30;
+        let gameTimer = null;
+        let spawnTimer = null;
+        let isPlaying = false;
+
+        // 获取DOM元素
+        const scoreEl = document.getElementById('score');
+        const timeEl = document.getElementById('time');
+        const menuEl = document.getElementById('menu');
+        const menuTitle = document.getElementById('menu-title');
+        const startBtn = document.getElementById('start-btn');
+
+        // 霓虹颜色库
+        const colors = [
+            { bg: '#ff007f', shadow: 'rgba(255,0,127,0.8)' }, // 粉红
+            { bg: '#00ffff', shadow: 'rgba(0,255,255,0.8)' }, // 青色
+            { bg: '#ffea00', shadow: 'rgba(255,234,0,0.8)' }, // 黄色
+            { bg: '#39ff14', shadow: 'rgba(57,255,20,0.8)' }, // 荧光绿
+            { bg: '#b500ff', shadow: 'rgba(181,0,255,0.8)' }  // 紫色
+        ];
+
+        // 监听开始按钮
+        startBtn.addEventListener('click', startGame);
+        // 兼容触摸屏直接点击
+        startBtn.addEventListener('touchstart', function(e){
+            e.preventDefault();
+            startGame();
+        });
+
+        function startGame() {
+            // 初始化数据
+            score = 0;
+            timeLeft = 30;
+            isPlaying = true;
+            scoreEl.innerText = score;
+            timeEl.innerText = timeLeft;
+            
+            // 隐藏菜单，清理屏幕
+            menuEl.style.display = 'none';
+            document.querySelectorAll('.bubble').forEach(b => b.remove());
+
+            // 启动倒计时
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                timeEl.innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+
+            // 启动气泡生成逻辑
+            scheduleNextSpawn();
+        }
+
+        function scheduleNextSpawn() {
+            if (!isPlaying) return;
+            
+            spawnBubble();
+            
+            // 随着分数增加，生成速度变快（越来越难）
+            let delay = Math.max(200, 800 - (score * 5)); 
+            
+            // 随机生成1-3个气泡，增加爽快感
+            if(Math.random() > 0.7) spawnBubble();
+
+            spawnTimer = setTimeout(scheduleNextSpawn, delay);
+        }
+
+        function spawnBubble() {
+            const bubble = document.createElement('div');
+            bubble.classList.add('bubble');
+
+            // 随机大小 (40px - 90px)
+            const size = Math.floor(Math.random() * 50) + 40;
+            bubble.style.width = `${size}px`;
+            bubble.style.height = `${size}px`;
+
+            // 随机颜色
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            bubble.style.backgroundColor = color.bg;
+            bubble.style.boxShadow = `0 0 15px ${color.shadow}, inset 0 0 10px rgba(255,255,255,0.5)`;
+
+            // 随机位置 (保证不出屏幕且避开顶部UI)
+            const maxX = window.innerWidth - size;
+            const maxY = window.innerHeight - size;
+            const x = Math.random() * maxX;
+            const y = Math.max(60, Math.random() * maxY); // 避开顶部60px
+
+            bubble.style.left = `${x}px`;
+            bubble.style.top = `${y}px`;
+
+            // 气泡生命周期（如果没有被点破，会自动消失）
+            const lifeTime = Math.max(800, 2000 - (score * 10)); // 随分数提升消失越快
+            const deathTimer = setTimeout(() => {
+                if (bubble.parentElement) {
+                    bubble.style.transition = 'opacity 0.3s, transform 0.3s';
+                    bubble.style.opacity = '0';
+                    bubble.style.transform = 'scale(0)';
+                    setTimeout(() => bubble.remove(), 300);
+                }
+            }, lifeTime);
+
+            // 绑定触摸和点击事件 (触摸屏核心体验)
+            const popHandler = function(e) {
+                e.preventDefault(); // 防止穿透点击和双指缩放
+                if (bubble.dataset.popped) return; // 防止重复触发
+                bubble.dataset.popped = 'true';
+                
+                clearTimeout(deathTimer);
+                popBubble(bubble, x, y, size, color.bg);
+            };
+
+            bubble.addEventListener('touchstart', popHandler, {passive: false});
+            bubble.addEventListener('mousedown', popHandler);
+
+            document.body.appendChild(bubble);
+        }
+
+        function popBubble(bubble, x, y, size, colorHex) {
+            // 加分
+            score += 10;
+            scoreEl.innerText = score;
+
+            // 替换爆炸动画
+            bubble.style.animation = 'pop 0.3s ease-out forwards';
+            
+            // 飘字效果
+            showFloatingText(x + size/2, y, "+10", colorHex);
+
+            // 动画结束后移除DOM
+            setTimeout(() => {
+                if (bubble.parentElement) bubble.remove();
+            }, 300);
+        }
+
+        function showFloatingText(x, y, text, color) {
+            const el = document.createElement('div');
+            el.classList.add('floating-text');
+            el.innerText = text;
+            el.style.left = `${x - 15}px`;
+            el.style.top = `${y}px`;
+            el.style.color = color;
+            el.style.textShadow = `0 0 5px ${color}`;
+            document.body.appendChild(el);
+
+            setTimeout(() => {
+                if (el.parentElement) el.remove();
+            }, 600);
+        }
+
+        function endGame() {
+            isPlaying = false;
+            clearInterval(gameTimer);
+            clearTimeout(spawnTimer);
+
+            menuTitle.innerText = "时间到！";
+            menuEl.querySelector('p').innerHTML = `你的最终得分: <span style="color:#0ff; font-size:30px; font-weight:bold;">${score}</span>`;
+            startBtn.innerText = "再玩一次";
+            menuEl.style.display = 'flex';
+        }
+    </script>
+</body>
+</html>

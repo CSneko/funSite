@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>星际光剑切割 - 休闲版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none; /* 彻底禁用浏览器的各种手势 */
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #05050a;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 顶部UI */
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #fff;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .heart { color: #ff2a2a; }
+
+        /* 菜单屏幕 */
+        #menu {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 5, 10, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            backdrop-filter: blur(4px);
+        }
+
+        h1 {
+            font-size: 40px;
+            color: #4da6ff;
+            text-shadow: 0 0 20px #4da6ff;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        p { color: #aaa; margin-bottom: 40px; font-size: 18px; text-align: center; line-height: 1.5;}
+        .highlight { color: #ff2a2a; font-weight: bold; text-shadow: 0 0 10px #ff2a2a;}
+
+        button {
+            padding: 15px 50px;
+            font-size: 24px;
+            color: #fff;
+            background: transparent;
+            border: 2px solid #4da6ff;
+            border-radius: 30px;
+            box-shadow: 0 0 15px #4da6ff, inset 0 0 15px #4da6ff;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:active {
+            transform: scale(0.9);
+            background: #4da6ff;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div>得分: <span id="score">0</span></div>
+        <div id="lives">❤️❤️❤️</div>
+    </div>
+
+    <div id="menu">
+        <h1 id="menu-title">星际切割<br></h1>
+        <p>要小心<span class="highlight">红色炸弹</span>哦</p>
+        <button id="start-btn">开始放松</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const livesEl = document.getElementById('lives');
+        const menu = document.getElementById('menu');
+        const menuTitle = document.getElementById('menu-title');
+        const startBtn = document.getElementById('start-btn');
+
+        // 设置画布尺寸
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 游戏变量
+        let isPlaying = false;
+        let score = 0;
+        let lives = 3;
+        let targets = [];
+        let particles = [];
+        let bladeTrail = [];
+        let frame = 0;
+        let animationId;
+
+        // 星球颜色库
+        const planetColors = ['#00ffff', '#ff00ff', '#ffff00', '#00ff00', '#ffa500'];
+
+        class Target {
+            constructor() {
+                // 修改1：目标变大，更容易切中 (半径从 30-50 增加到 45-75)
+                this.r = Math.random() * 30 + 45; 
+                this.x = Math.random() * (canvas.width - this.r * 2) + this.r;
+                this.y = canvas.height + this.r;
+                
+                const targetX = canvas.width / 2 + (Math.random() * 200 - 100);
+                // 修改2：水平移动变平缓
+                this.vx = (targetX - this.x) * 0.012; 
+                // 修改3：向上抛出的初速度大幅降低，且随分数增加的幅度变小
+                this.vy = -(Math.random() * 4 + 10 + (score * 0.03)); 
+                
+                // 修改4：炸弹概率降低至 10%
+                this.isBomb = Math.random() < 0.1;
+                this.color = this.isBomb ? '#ff2a2a' : planetColors[Math.floor(Math.random() * planetColors.length)];
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                // 修改5：重力大幅减弱 (0.25 -> 0.12)，营造太空漂浮感
+                this.vy += 0.12; 
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 25;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                
+                // 炸弹的内心警告
+                if(this.isBomb) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.r * 0.4, 0, Math.PI * 2);
+                    ctx.fillStyle = '#000';
+                    ctx.fill();
+                }
+                ctx.shadowBlur = 0; 
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 12; // 爆炸散开更广一点
+                this.vy = (Math.random() - 0.5) * 12;
+                this.life = 1;
+                this.color = color;
+                this.size = Math.random() * 8 + 3; // 粒子变大
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= 0.02; // 粒子存在时间变长
+            }
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // 输入处理 (滑动切割)
+        function handleInput(x, y) {
+            if (!isPlaying) return;
+            bladeTrail.push({x, y, life: 12});
+
+            // 碰撞检测
+            for (let i = targets.length - 1; i >= 0; i--) {
+                let t = targets[i];
+                let dist = Math.hypot(x - t.x, y - t.y);
+                
+                // 修改6：切中判定范围增加 (t.r + 40)，就算划偏了一点也能切碎，更爽快
+                let hitRadius = t.isBomb ? t.r - 10 : t.r + 40; // 炸弹的判定区反而变小，更不容易误触
+
+                if (dist < hitRadius) {
+                    if (t.isBomb) {
+                        gameOver();
+                    } else {
+                        score++;
+                        scoreEl.innerText = score;
+                        for(let p=0; p<20; p++) particles.push(new Particle(t.x, t.y, t.color)); // 爆炸粒子变多
+                        targets.splice(i, 1);
+                    }
+                }
+            }
+        }
+
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            for(let i=0; i<e.touches.length; i++) {
+                handleInput(e.touches[i].clientX, e.touches[i].clientY);
+            }
+        }, {passive: false});
+
+        canvas.addEventListener('mousemove', e => {
+            if(e.buttons > 0) handleInput(e.clientX, e.clientY);
+        });
+
+        startBtn.addEventListener('click', startGame);
+        startBtn.addEventListener('touchstart', e => { e.preventDefault(); startGame(); });
+
+        function startGame() {
+            score = 0;
+            lives = 3;
+            targets = [];
+            particles = [];
+            bladeTrail = [];
+            frame = 0;
+            isPlaying = true;
+            
+            scoreEl.innerText = score;
+            updateLivesUI();
+            menu.style.display = 'none';
+            
+            cancelAnimationFrame(animationId);
+            gameLoop();
+        }
+
+        function updateLivesUI() {
+            let heartStr = '';
+            for(let i=0; i<lives; i++) heartStr += '❤️';
+            livesEl.innerText = heartStr;
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            menuTitle.innerHTML = "不小心切到炸弹了！";
+            menuTitle.style.color = "#ff2a2a";
+            menuTitle.style.textShadow = "0 0 20px #ff2a2a";
+            menuTitle.style.fontSize = "30px";
+            menu.querySelector('p').innerHTML = `最终得分: <span style="font-size:35px; color:#4da6ff;">${score}</span>`;
+            startBtn.innerText = "再玩一次";
+            menu.style.display = 'flex';
+        }
+
+        function gameLoop() {
+            if(!isPlaying) return;
+            
+            ctx.fillStyle = 'rgba(5, 5, 10, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 修改7：生成间隔变慢 (最快也要 40 帧才出一个)
+            if (frame % Math.max(40, 90 - Math.floor(score/3)) === 0) {
+                targets.push(new Target());
+            }
+
+            for (let i = targets.length - 1; i >= 0; i--) {
+                let t = targets[i];
+                t.update();
+                t.draw();
+
+                if (t.y > canvas.height + t.r + 50) {
+                    if (!t.isBomb) {
+                        lives--;
+                        updateLivesUI();
+                        if (lives <= 0) {
+                            menuTitle.innerHTML = "星球掉光啦";
+                            menuTitle.style.color = "#ffa500";
+                            gameOver();
+                        }
+                    }
+                    targets.splice(i, 1);
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.update();
+                p.draw();
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            if (bladeTrail.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(bladeTrail[0].x, bladeTrail[0].y);
+                for (let i = 1; i < bladeTrail.length; i++) {
+                    ctx.lineTo(bladeTrail[i].x, bladeTrail[i].y);
+                }
+                ctx.strokeStyle = '#4da6ff';
+                ctx.lineWidth = 8; // 光剑变粗一点
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#4da6ff';
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                for(let i = 0; i < bladeTrail.length; i++) bladeTrail[i].life--;
+                bladeTrail = bladeTrail.filter(p => p.life > 0);
+            }
+
+            frame++;
+            animationId = requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>

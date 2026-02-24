@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>霓虹碎屏狂欢 - 纯爽版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #000; /* 纯黑背景，凸显霓虹 */
+            color: #fff;
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 顶部狂暴的分数UI */
+        #ui {
+            position: absolute;
+            top: 30px;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #score-container {
+            font-size: 30px;
+            color: rgba(255,255,255,0.8);
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+            transition: transform 0.1s;
+        }
+
+        #score {
+            font-size: 50px;
+            color: #fff;
+        }
+
+        #combo-container {
+            font-size: 40px;
+            color: #ff007f;
+            text-shadow: 0 0 20px #ff007f, 0 0 40px #ff007f;
+            margin-top: 10px;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #combo-container.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .combo-text {
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div id="score-container">SCORE <span id="score">0</span></div>
+        <div id="combo-container"><span id="combo">0</span> <span class="combo-text">COMBO!</span></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const comboEl = document.getElementById('combo');
+        const comboContainer = document.getElementById('combo-container');
+        const scoreContainer = document.getElementById('score-container');
+
+        // 调整画布
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 核心变量
+        let score = 0;
+        let combo = 0;
+        let comboTimer = 0;
+        let screenShake = 0; // 屏幕震动强度
+        
+        let targets = [];
+        let particles = [];
+        let texts = [];
+
+        // 生成随机鲜艳的霓虹色
+        function randomColor() {
+            return `hsl(${Math.random() * 360}, 100%, 60%)`;
+        }
+
+        // 目标方块 (被切碎的倒霉蛋)
+        class Target {
+            constructor() {
+                this.r = Math.random() * 20 + 20; // 半径 20-40
+                this.x = Math.random() < 0.5 ? -this.r : canvas.width + this.r; // 从屏幕左右两侧飞入
+                this.y = Math.random() * canvas.height;
+                
+                // 向屏幕中间飞
+                let angle = Math.atan2(canvas.height/2 - this.y, canvas.width/2 - this.x);
+                let speed = Math.random() * 4 + 2;
+                
+                // 加点随机偏移
+                angle += (Math.random() - 0.5) * 1;
+
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                
+                this.color = randomColor();
+                this.angle = 0;
+                this.vAngle = (Math.random() - 0.5) * 0.2;
+                this.sides = Math.floor(Math.random() * 3) + 3; // 3到5边形
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.angle += this.vAngle;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.beginPath();
+                for (let i = 0; i < this.sides; i++) {
+                    let a = (i / this.sides) * Math.PI * 2;
+                    let px = Math.cos(a) * this.r;
+                    let py = Math.sin(a) * this.r;
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // 爆炸粒子 (暴力溅射效果)
+        class Particle {
+            constructor(x, y, color, isHuge) {
+                this.x = x;
+                this.y = y;
+                // isHuge 决定粒子爆开的初速度，体现“爆炸感”
+                let speed = isHuge ? Math.random() * 25 + 10 : Math.random() * 10 + 2;
+                let angle = Math.random() * Math.PI * 2;
+                
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                
+                this.life = 1;
+                this.decay = isHuge ? 0.015 : 0.03; // 消失速度
+                this.color = color;
+                this.size = Math.random() * 6 + 2;
+                if(isHuge) this.size *= 2;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= 0.92; // 强烈的空气阻力，让粒子有“爆开然后减速”的感觉
+                this.vy *= 0.92;
+                this.life -= this.decay;
+            }
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // 飘字效果
+        class FloatingText {
+            constructor(x, y, text, color, size) {
+                this.x = x;
+                this.y = y;
+                this.text = text;
+                this.color = color;
+                this.size = size;
+                this.life = 1;
+                this.vy = -2;
+            }
+            update() {
+                this.y += this.vy;
+                this.life -= 0.02;
+            }
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.font = `bold ${this.size}px Impact`;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // 触发爆炸 (核心爽感来源)
+        function explodeAt(x, y) {
+            // 在手指位置生成一团纯特效粒子
+            let touchColor = randomColor();
+            for(let p=0; p<5; p++) particles.push(new Particle(x, y, touchColor, false));
+
+            let hitSomething = false;
+
+            // 检查是否炸到了东西
+            for (let i = targets.length - 1; i >= 0; i--) {
+                let t = targets[i];
+                let dist = Math.hypot(x - t.x, y - t.y);
+                
+                // 极大的判定范围 (半屏都是判定区)，闭着眼都能切到
+                if (dist < t.r + 80) {
+                    hitSomething = true;
+                    // 分数和连击计算
+                    combo++;
+                    comboTimer = 100; // 维持连击的帧数
+                    let points = 10 * combo;
+                    score += points;
+                    
+                    // UI更新
+                    scoreEl.innerText = score;
+                    comboEl.innerText = combo;
+                    comboContainer.classList.add('active');
+                    
+                    // UI缩放动画
+                    scoreContainer.style.transform = 'scale(1.2)';
+                    setTimeout(() => scoreContainer.style.transform = 'scale(1)', 50);
+
+                    // 满屏飙字
+                    texts.push(new FloatingText(t.x, t.y, `+${points}`, t.color, Math.min(80, 20 + combo * 2)));
+
+                    // 极其夸张的爆炸粒子
+                    for(let p=0; p<40; p++) particles.push(new Particle(t.x, t.y, t.color, true));
+                    
+                    // 屏幕剧烈震动
+                    screenShake = Math.min(30, screenShake + 10); 
+
+                    // 移除目标
+                    targets.splice(i, 1);
+                }
+            }
+
+            // 就算没切到目标，只要划了，就给一点微弱的震动反馈
+            if(!hitSomething) screenShake = Math.max(screenShake, 2);
+        }
+
+        // 输入监听 (极其灵敏)
+        function handleMove(e) {
+            e.preventDefault();
+            // 只要手指在移动，就疯狂触发爆炸
+            for(let i=0; i<e.touches.length; i++) {
+                explodeAt(e.touches[i].clientX, e.touches[i].clientY);
+            }
+        }
+
+        canvas.addEventListener('touchmove', handleMove, {passive: false});
+        canvas.addEventListener('touchstart', handleMove, {passive: false});
+
+        // 兼容电脑鼠标游玩
+        canvas.addEventListener('mousemove', e => {
+            if(e.buttons > 0) explodeAt(e.clientX, e.clientY);
+        });
+        canvas.addEventListener('mousedown', e => explodeAt(e.clientX, e.clientY));
+
+        // 游戏主循环
+        function gameLoop() {
+            // ==== 屏幕震动逻辑 ====
+            ctx.save();
+            if (screenShake > 0) {
+                let dx = (Math.random() - 0.5) * screenShake;
+                let dy = (Math.random() - 0.5) * screenShake;
+                ctx.translate(dx, dy);
+                screenShake *= 0.9; // 震动衰减
+                if(screenShake < 0.5) screenShake = 0;
+            }
+
+            // ==== 绘制背景 ====
+            // 使用黑色并带有透明度，形成粒子拖影效果
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(-50, -50, canvas.width + 100, canvas.height + 100);
+
+            // 开启高亮叠加模式！(核心视觉效果：颜色重叠会发光变白)
+            ctx.globalCompositeOperation = 'lighter';
+
+            // ==== 生成目标 ====
+            // 屏幕上的目标保持在 15 个左右，随划随刷
+            if (targets.length < 15) {
+                targets.push(new Target());
+            }
+
+            // ==== 更新/绘制 目标 ====
+            for (let i = targets.length - 1; i >= 0; i--) {
+                let t = targets[i];
+                t.update();
+                t.draw();
+                // 飞出屏幕太远就删掉
+                if (t.x < -200 || t.x > canvas.width + 200 || t.y < -200 || t.y > canvas.height + 200) {
+                    targets.splice(i, 1);
+                }
+            }
+
+            // ==== 更新/绘制 粒子 ====
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.update();
+                p.draw();
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            // ==== 更新/绘制 飘字 ====
+            for (let i = texts.length - 1; i >= 0; i--) {
+                let t = texts[i];
+                t.update();
+                t.draw();
+                if (t.life <= 0) texts.splice(i, 1);
+            }
+
+            ctx.restore(); // 恢复画布状态(结束震动偏移)
+
+            // ==== 连击系统衰减 ====
+            if (combo > 0) {
+                comboTimer--;
+                if (comboTimer <= 0) {
+                    combo = 0;
+                    comboContainer.classList.remove('active');
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 启动
+        gameLoop();
+    </script>
+</body>
+</html>
