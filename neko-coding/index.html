@@ -128,6 +128,9 @@
     CHARSET.forEach((char, index) => {
         REVERSE_MAP[char] = index;
     });
+    
+    // 【修改点】兼容中文全角波浪号：将全角的 '～' 也映射为与半角 '~' 相同的值
+    REVERSE_MAP['～'] = REVERSE_MAP['~'];
 
     // 编码函数
     function encodeText() {
@@ -153,13 +156,18 @@
 
     // 解码函数
     function decodeText() {
-        const encodedText = document.getElementById('encodedText').value;
+        let encodedText = document.getElementById('encodedText').value;
         if (!encodedText) return;
+
+        // 在处理前，如果用户输入框里有全角～，直接视觉上替换为半角~，体验更好
+        encodedText = encodedText.replace(/～/g, '~');
+        document.getElementById('encodedText').value = encodedText;
 
         let base9Str = "";
         
         // 过滤无关字符，并将有效字符转换为9进制数字字符串
         for (let char of encodedText) {
+            // 查字典，只要是在预设字符集内的（包括替换后/映射好的）都提取出来
             if (REVERSE_MAP[char] !== undefined) {
                 base9Str += REVERSE_MAP[char];
             }
