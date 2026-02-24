@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>继续</title>
+    <style>
+        /* 页面基础样式，确保按钮居中且页面全屏无滚动条 */
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff;
+            overflow: hidden;
+        }
+
+        /* 红色继续按钮样式 */
+        #startBtn {
+            background-color: #ff0000;
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 20px 50px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        #startBtn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+    <button id="startBtn">继续</button>
+
+    <script>
+        const btn = document.getElementById('startBtn');
+        const audioFiles = ['00.mp3', '01.mp3', '02.mp3', '03.mp3', '04.mp3', '05.mp3','06.mp3','07.mp3'];
+        let playlist = [];
+        let currentIndex = 0;
+        
+        // 创建一个纯内存中的音频对象，不加入到HTML DOM中，彻底杜绝控件
+        const audio = new Audio();
+        let isIntentionalPlay = false; // 用于防暂停的标志位
+
+        // 洗牌算法：用于打乱数组，实现真正的随机顺序播放
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        // 播放下一首的逻辑
+        function playNext() {
+            // 如果列表播放完毕，重新打乱列表并从头开始
+            if (currentIndex >= playlist.length) {
+                playlist = shuffle([...audioFiles]);
+                currentIndex = 0;
+            }
+            
+            audio.src = playlist[currentIndex];
+            audio.play().catch(e => console.error("播放被阻止:", e));
+            currentIndex++;
+        }
+
+        // 按钮点击事件
+        btn.addEventListener('click', () => {
+            // 1. 隐藏按钮，让页面完全变成空白
+            btn.style.display = 'none';
+            
+            // 2. 初始化播放列表并开始播放
+            isIntentionalPlay = true;
+            playlist = shuffle([...audioFiles]);
+            currentIndex = 0;
+            playNext();
+        });
+
+        // 当前音频播放结束时，自动播放下一首
+        audio.addEventListener('ended', playNext);
+
+        // 【防暂停机制】：监听暂停事件
+        // 如果用户尝试通过键盘媒体键、耳机按键等方式暂停，强制立刻恢复播放
+        audio.addEventListener('pause', () => {
+            if (isIntentionalPlay && !audio.ended) {
+                audio.play();
+            }
+        });
+    </script>
+
+</body>
+</html>

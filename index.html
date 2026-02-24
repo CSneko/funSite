@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>欢迎 - 但这里啥也没有</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #111111; /* 深邃的暗色背景 */
+            color: #eeeeee;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            text-align: center;
+            overflow: hidden; /* 防止出现滚动条 */
+        }
+
+        .container {
+            padding: 40px;
+            animation: fadeIn 2s ease-in-out; /* 缓慢浮现的动画 */
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            font-weight: 300;
+            letter-spacing: 4px;
+        }
+
+        p {
+            font-size: 1.2rem;
+            color: #888888; /* 偏灰色的副文本，降低视觉存在感 */
+            line-height: 1.8;
+            margin: 10px 0;
+        }
+
+        .empty-space {
+            margin-top: 40px;
+            height: 2px;
+            width: 50px;
+            background-color: #333333;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* 隐藏的彩蛋文本 */
+        .secret-message {
+            margin-top: 100px;
+            font-size: 0.9rem;
+            color: #111111; /* 字体颜色和背景色一样，默认看不见 */
+            transition: color 0.5s ease;
+            cursor: default;
+        }
+
+        /* 鼠标悬浮时显现 */
+        .secret-message:hover {
+            color: #555555; 
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>欢迎光临</h1>
+        
+        <p>很高兴你找到了这里。</p>
+        <p>不过非常抱歉，<strong>这里真的啥都没有。</strong></p>
+        <p>没有干货文章，没有精美图片，连个能点的按钮都没有。</p>
+        <p>你可以深呼吸，享受这片刻的互联网宁静，然后关闭这个网页。</p>
+
+        <div class="empty-space"></div>
+
+        <!-- 鼠标划过这行字附近才会显现 -->
+        <div class="secret-message">
+            都说了啥都没有，你还到处乱划鼠标干嘛...
+        </div>
+    </div>
+
+</body>
+</html>
