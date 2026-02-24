@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>趣味留言生成器</title>
+    <style>
+        /* 基础通用样式 */
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; transition: background-color 0.5s; }
+        .hidden { display: none !important; }
+        
+        /* ---------------- 生成器界面样式 ---------------- */
+        #generator-ui { padding: 40px; max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; background: #f9f9f9; min-height: 100vh; box-sizing: border-box;}
+        h1 { text-align: center; color: #333; }
+        textarea { width: 100%; height: 150px; padding: 15px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; resize: none; box-sizing: border-box;}
+        select, button { padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; cursor: pointer; }
+        button { background-color: #4CAF50; color: white; border: none; font-weight: bold; transition: background 0.3s; }
+        button:hover { background-color: #45a049; }
+        #result-box { margin-top: 20px; padding: 15px; background: #e8f5e9; border-left: 5px solid #4CAF50; word-break: break-all; }
+        #result-link { display: block; margin-bottom: 10px; color: #2e7d32; text-decoration: none; font-weight: bold;}
+        #result-link:hover { text-decoration: underline; }
+
+        /* ---------------- 展示界面动画与主题 ---------------- */
+        #viewer-ui { height: 100vh; display: flex; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; overflow: hidden; position: relative;}
+        
+        /* 开场动画遮罩 */
+        #intro-animation { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #222; z-index: 10; display: flex; justify-content: center; align-items: center; color: white; font-size: 24px; font-weight: bold; transition: opacity 0.8s ease-out; }
+        .spin { animation: spinCounter 1.5s ease-in-out forwards; }
+        @keyframes spinCounter {
+            0% { transform: scale(0) rotate(0deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(360deg); opacity: 1; }
+            100% { transform: scale(1) rotate(720deg); opacity: 0; }
+        }
+
+        #view-content { opacity: 0; transition: opacity 1s ease-in; max-width: 800px;}
+        .show-content { opacity: 1 !important; transform: scale(1); }
+
+        /* 主题 1：可爱风 (Cute) */
+        body.theme-cute { background: #ffe4e1; }
+        .theme-cute #view-content { font-family: 'Comic Sans MS', 'Microsoft YaHei', cursive; color: #ff69b4; font-size: 32px; background: rgba(255, 255, 255, 0.7); padding: 40px; border-radius: 30px; box-shadow: 0 10px 20px rgba(255, 105, 180, 0.2); border: 3px dashed #ffb6c1; animation: bounce 2s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+        /* 主题 2：极客风 (Geek) */
+        body.theme-geek { background: #000; }
+        .theme-geek #view-content { font-family: 'Courier New', Courier, monospace; color: #0f0; font-size: 24px; text-align: left; text-shadow: 0 0 5px #0f0; position: relative; }
+        .theme-geek #view-content::after { content: '|'; animation: blink 1s step-end infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* 主题 3：搞笑风 (Funny) */
+        body.theme-funny { background: #ffeb3b; }
+        .theme-funny #view-content { font-family: 'Impact', '黑体', sans-serif; color: #f44336; font-size: 50px; text-transform: uppercase; -webkit-text-stroke: 2px #000; text-shadow: 5px 5px 0 #000; animation: shake 0.5s infinite; }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-2deg); }
+            20% { transform: translate(-3px, 0px) rotate(2deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(2deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-2deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ================== 生成器部分 ================== -->
+    <div id="generator-ui">
+        <h1>✨ 趣味留言生成器</h1>
+        <p>输入你想说的话，选个酷炫的风格，生成专属链接发给朋友！</p>
+        <textarea id="input-text" placeholder="在这里输入要对朋友说的悄悄话..."></textarea>
+        
+        <label for="style-select">选择页面风格：</label>
+        <select id="style-select">
+            <option value="cute">💖 可爱风</option>
+            <option value="geek">💻 极客风</option>
+            <option value="funny">🤪 搞笑风</option>
+        </select>
+        
+        <button onclick="generateLink()">生成魔法链接</button>
+
+        <div id="result-box" class="hidden">
+            <p>生成成功！点击链接或复制发给朋友：</p>
+            <a id="result-link" href="#" target="_blank"></a>
+            <button onclick="copyLink()" style="font-size: 14px; padding: 8px;">📋 复制链接</button>
+        </div>
+    </div>
+
+    <!-- ================== 展示页部分 ================== -->
+    <div id="viewer-ui" class="hidden">
+        <!-- 加载动画层 -->
+        <div id="intro-animation">
+            <div id="intro-icon">🔮 解析参数中...</div>
+        </div>
+        <!-- 真正的内容层 -->
+        <div id="view-content"></div>
+    </div>
+
+    <script>
+        // --- 简易加密与解密函数 (Base64 + URIEncode) ---
+        function encrypt(text) {
+            // btoa 可以将字符串转为 Base64，但不支持中文，需要先用 encodeURIComponent
+            return btoa(encodeURIComponent(text));
+        }
+
+        function decrypt(encodedText) {
+            try {
+                return decodeURIComponent(atob(encodedText));
+            } catch (e) {
+                return "文本解密失败！可能链接被破坏了。";
+            }
+        }
+
+        // --- 路由逻辑判断 ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const encodedText = urlParams.get('text');
+        const style = urlParams.get('style');
+
+        if (encodedText && style) {
+            // 带有参数 -> 显示展示页
+            document.getElementById('generator-ui').classList.add('hidden');
+            document.getElementById('viewer-ui').classList.remove('hidden');
+            
+            // 解析文本与应用样式
+            const plainText = decrypt(encodedText);
+            const contentDiv = document.getElementById('view-content');
+            
+            document.body.className = 'theme-' + style; // 设置背景主题
+
+            // 极客风特殊处理（打字机效果模拟）
+            if (style === 'geek') {
+                contentDiv.innerHTML = "root@system:~$ decrypting...<br>" + plainText.replace(/\n/g, '<br>');
+            } else if (style === 'cute') {
+                contentDiv.innerHTML = "✨ " + plainText.replace(/\n/g, '<br>') + " ✨";
+            } else {
+                contentDiv.innerHTML = plainText.replace(/\n/g, '<br>');
+            }
+
+            // 触发开场动画
+            const intro = document.getElementById('intro-animation');
+            const icon = document.getElementById('intro-icon');
+            icon.classList.add('spin');
+
+            // 动画结束后显示内容
+            setTimeout(() => {
+                intro.style.opacity = '0';
+                setTimeout(() => {
+                    intro.classList.add('hidden');
+                    contentDiv.classList.add('show-content');
+                }, 800);
+            }, 1000);
+
+        } else {
+            // 没有参数 -> 显示生成器，无需隐藏操作因为一开始就是显示生成的
+        }
+
+        // --- 按钮事件处理 ---
+        function generateLink() {
+            const text = document.getElementById('input-text').value;
+            if (!text.trim()) {
+                alert("请输入一些文本哦！");
+                return;
+            }
+            const style = document.getElementById('style-select').value;
+            const encrypted = encrypt(text);
+            
+            // 构建带参数的 URL
+            const baseUrl = window.location.href.split('?')[0];
+            const finalUrl = `${baseUrl}?text=${encrypted}&style=${style}`;
+            
+            const linkTag = document.getElementById('result-link');
+            linkTag.href = finalUrl;
+            linkTag.innerText = finalUrl;
+            
+            document.getElementById('result-box').classList.remove('hidden');
+        }
+
+        function copyLink() {
+            const linkText = document.getElementById('result-link').innerText;
+            navigator.clipboard.writeText(linkText).then(() => {
+                alert("已复制到剪贴板！");
+            }).catch(err => {
+                alert("复制失败，请手动选取复制。");
+            });
+        }
+    </script>
+</body>
+</html>
