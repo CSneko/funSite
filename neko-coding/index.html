@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>特制密文转换器</title>
+    <style>
+        :root {
+            --primary-color: #ff75a0;
+            --hover-color: #ff5285;
+            --bg-color: #ffeef4;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background: #ffffff;
+            width: 100%;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(255, 117, 160, 0.2);
+        }
+        h2 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-top: 0;
+            letter-spacing: 2px;
+        }
+        label {
+            font-weight: bold;
+            color: #555;
+            display: block;
+            margin-bottom: 8px;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 12px;
+            border: 2px solid #ffd1e0;
+            border-radius: 12px;
+            font-size: 15px;
+            resize: vertical;
+            box-sizing: border-box;
+            transition: all 0.3s;
+            line-height: 1.5;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 8px rgba(255, 117, 160, 0.3);
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.2s, transform 0.1s;
+        }
+        button:hover {
+            background-color: var(--hover-color);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        .footer-action {
+            text-align: right;
+            margin-top: 10px;
+        }
+        .footer-action button {
+            padding: 8px 16px;
+            font-size: 14px;
+            background-color: #fff;
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+        }
+        .footer-action button:hover {
+            background-color: var(--bg-color);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>♡ 私密喵语转换器 ♡</h2>
+    
+    <label for="plainText">正常文字：</label>
+    <textarea id="plainText" placeholder="在这里输入你想加密的文字（支持中文、英文、表情包等）..."></textarea>
+
+    <div class="controls">
+        <button onclick="encodeText()">加密 ↓</button>
+        <button onclick="decodeText()">↑ 解密</button>
+    </div>
+
+    <label for="encodedText">密文区：</label>
+    <textarea id="encodedText" placeholder="嗯啊齁哦♡哈~呜喵..."></textarea>
+    
+    <div class="footer-action">
+        <button onclick="copyEncoded()">复制密文</button>
+    </div>
+</div>
+
+<script>
+    // 字符集：正好9个字符，作为9进制的 0-8
+    const CHARSET = ['嗯', '啊', '齁', '哦', '♡', '哈', '~', '呜', '喵'];
+    
+    // 生成反向映射字典
+    const REVERSE_MAP = {};
+    CHARSET.forEach((char, index) => {
+        REVERSE_MAP[char] = index;
+    });
+
+    // 编码函数
+    function encodeText() {
+        const plainText = document.getElementById('plainText').value;
+        if (!plainText) return;
+
+        // 将字符串转为 UTF-8 字节数组
+        const bytes = new TextEncoder().encode(plainText);
+        let encodedStr = "";
+
+        // 遍历每个字节 (0-255)
+        for (let i = 0; i < bytes.length; i++) {
+            // 将字节转为9进制字符串，并补齐3位 (因为 255 的9进制是 313，最多3位)
+            let base9 = bytes[i].toString(9).padStart(3, '0');
+            
+            // 将9进制数字映射为自定义字符
+            for (let char of base9) {
+                encodedStr += CHARSET[parseInt(char)];
+            }
+        }
+        document.getElementById('encodedText').value = encodedStr;
+    }
+
+    // 解码函数
+    function decodeText() {
+        const encodedText = document.getElementById('encodedText').value;
+        if (!encodedText) return;
+
+        let base9Str = "";
+        
+        // 过滤无关字符，并将有效字符转换为9进制数字字符串
+        for (let char of encodedText) {
+            if (REVERSE_MAP[char] !== undefined) {
+                base9Str += REVERSE_MAP[char];
+            }
+        }
+
+        if (base9Str.length === 0) {
+            alert("没有检测到有效的密文字符！");
+            return;
+        }
+
+        if (base9Str.length % 3 !== 0) {
+            alert("解密失败：密文损坏或不完整！");
+            return;
+        }
+
+        // 每3位作为一个字节还原
+        const bytes = new Uint8Array(base9Str.length / 3);
+        for (let i = 0; i < base9Str.length; i += 3) {
+            let chunk = base9Str.substring(i, i + 3);
+            bytes[i / 3] = parseInt(chunk, 9);
+        }
+
+        try {
+            // 将字节数组转回正常的字符串
+            const decodedStr = new TextDecoder().decode(bytes);
+            document.getElementById('plainText').value = decodedStr;
+        } catch (e) {
+            alert("解密失败：非法的数据流！");
+        }
+    }
+
+    // 一键复制功能
+    function copyEncoded() {
+        const encodedArea = document.getElementById('encodedText');
+        if (!encodedArea.value) {
+            alert("没有可以复制的内容呀~");
+            return;
+        }
+        encodedArea.select();
+        document.execCommand('copy');
+        alert("复制成功！快去发送吧~");
+    }
+</script>
+
+</body>
+</html>
