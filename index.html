@@ -90,10 +90,42 @@
         }
 
         .link-group {
-            display: flex;
-            gap: 20px;
-        }
+    display: flex;
+    flex-wrap: wrap; /* 允许换行 */
+    justify-content: center;
+    gap: 15px; /* 缩小间距 */
+    max-width: 90%; /* 限制最大宽度 */
+    margin: 0 auto; /* 居中对齐 */
+}
 
+@media (max-width: 768px) {
+    .link-group {
+        flex-direction: column; /* 手机端垂直排列 */
+        align-items: center;
+    }
+
+    .action-link {
+        width: 80%; /* 手机端按钮宽度适配 */
+        text-align: center;
+    }
+}
+/* SVG 图片容器样式 */
+.svg-container {
+    margin-top: 40px;
+    text-align: center;
+}
+
+.svg-container img {
+    width: 200px; /* 固定宽度 */
+    height:200px; /* 固定高度 */
+    pointer-events: none; /* 禁止点击事件 */
+    user-select: none; /* 禁止选中图片 */
+    transition: transform 0.3s ease;
+}
+
+.svg-container img:hover {
+    transform: scale(1.1); /* 鼠标悬停放大效果 */
+}
         /* 链接按钮样式 */
         .action-link {
             text-decoration: none;
@@ -139,22 +171,29 @@
     </div>
 
     <!-- 第三屏：隐藏在最底部的奖励（链接） -->
-    <div class="footer-links">
-        <p>呜哇~ 还是被你找到了呢~</p>
+    <!-- 底部链接区域 -->
+<!-- 底部链接区域 -->
+<div class="footer-links">
+    <p>呜哇~ 还是被你找到了呢~</p>
+    
+    <div class="link-group">
+        <!-- 链接 1 -->
+        <a href="yinjiao/" target="_blank" class="action-link">美妙の东西</a>
         
-        <div class="link-group">
-            <!-- 链接 1-->
-            <a href="yinjiao/" target="_blank" class="action-link">美妙の东西</a>
-            
-            <!-- 链接 2  -->
-            <a href="neko-coding/" class="action-link">♡ 私密喵语转换器 ♡</a>
-            <a href="touch-game-0/" class="action-link">霓虹气泡戳戳乐</a>
-            <a href="touch-game-1/" class="action-link">星际切割</a>
-            <a href="touch-game-2/" class="action-link">霓虹碎屏狂欢</a>
-            <a href="github-action-query/" class="action-link">github活动查询</a>
-            <a href="message-gen/" class="action-link">趣味留言生成器</a>
-        </div>
+        <!-- 链接 2 -->
+        <a href="neko-coding/" class="action-link">♡ 私密喵语转换器 ♡</a>
+        <a href="touch-game-0/" class="action-link">霓虹气泡戳戳乐</a>
+        <a href="touch-game-1/" class="action-link">星际切割</a>
+        <a href="touch-game-2/" class="action-link">霓虹碎屏狂欢</a>
+        <a href="github-action-query/" class="action-link">github活动查询</a>
+        <a href="message-gen/" class="action-link">趣味留言生成器</a>
     </div>
+
+    <!-- 新增 SVG 图片容器（仅展示，不可点击） -->
+    <div class="svg-container">
+        <img src="https://c.cneko.org/c/@CrystalNeko?p=fun" alt="访问统计" />
+    </div>
+</div>
 
 </body>
 </html>

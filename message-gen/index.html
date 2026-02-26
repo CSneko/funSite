@@ -98,6 +98,26 @@
         <div id="view-content"></div>
     </div>
 
+<!-- 底部居中图片 -->
+<div id="bottom-image">
+    <img src="https://c.cneko.org/c/@CrystalNeko?p=fun" alt="CrystalNeko">
+</div>
+
+<style>
+#bottom-image {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999;
+}
+
+#bottom-image img {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+}
+</style>
     <script>
         // --- 简易加密与解密函数 (Base64 + URIEncode) ---
         function encrypt(text) {

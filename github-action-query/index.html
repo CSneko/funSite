@@ -76,6 +76,27 @@
     <div id="countInfo" class="count-info"></div>
     <ul id="activityList" class="timeline"></ul>
 
+    <!-- 底部居中图片 -->
+<div id="bottom-image">
+    <img src="https://c.cneko.org/c/@CrystalNeko?p=fun" alt="CrystalNeko">
+</div>
+
+<style>
+#bottom-image {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999;
+}
+
+#bottom-image img {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+}
+</style>
+
     <script>
         function handleKeyPress(event) {
             if (event.key === 'Enter') fetchActivities();
