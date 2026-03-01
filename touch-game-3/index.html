@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>霓虹光网</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #050510; overflow: hidden; touch-action: none; 
+            color: white; font-family: 'Segoe UI', sans-serif; user-select: none;
+        }
+        canvas { display: block; }
+        
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: rgba(5, 5, 16, 0.9); z-index: 20; backdrop-filter: blur(5px);
+        }
+        
+        #startScreen h1 { font-size: 45px; color: #00ffff; text-shadow: 0 0 20px #00ffff; margin-bottom: 10px; }
+        .instructions { background: rgba(255,255,255,0.1); padding: 15px 20px; border-radius: 15px; width: 85%; max-width: 400px; margin-bottom: 25px; }
+        .instructions p { margin: 8px 0; font-size: 15px; line-height: 1.5; }
+        .highlight-red { color: #ff3366; font-weight: bold; }
+        .highlight-green { color: #00ff44; font-weight: bold; }
+        .highlight-blue { color: #00aaff; font-weight: bold; text-shadow: 0 0 5px #00aaff;}
+
+        #ui { position: absolute; top: 15px; left: 15px; pointer-events: none; z-index: 10; text-shadow: 0 2px 5px rgba(0,0,0,0.8); display: none; }
+        #ui h2 { margin: 0; font-size: 28px; color: #00ffff; font-weight: 900; }
+        .stats { font-size: 15px; color: #ccc; margin-top: 5px; }
+        #lives { color: #ff3366; font-size: 16px; font-weight: bold; margin-top: 8px; letter-spacing: 1px;}
+        
+        #shieldUI { color: #00aaff; font-size: 18px; font-weight: bold; margin-top: 5px; display: none; text-shadow: 0 0 10px #00aaff;}
+        #speedUI { color: #ffaa00; font-weight: bold; }
+
+        button {
+            padding: 15px 40px; font-size: 22px; font-weight: bold; color: #050510;
+            background: #00ffff; border: none; border-radius: 30px;
+            box-shadow: 0 0 20px #00ffff; cursor: pointer; transition: 0.2s;
+        }
+        button:active { transform: scale(0.9); }
+
+        #gameoverScreen h2 { font-size: 45px; color: #ff3366; margin: 0; text-shadow: 0 0 20px #ff3366;}
+        #gameoverScreen p { font-size: 22px; color: #fff; margin: 20px 0; }
+    </style>
+</head>
+<body>
+
+    <div id="startScreen" class="screen">
+        <h1>霓虹光网</h1>
+        <div class="instructions">
+            <p>🖐 <b>操作：</b>使用<b>多指连线</b>切碎目标。</p>
+            <p>🟡 <b>黄/青球：</b>高分，漏掉扣1血。</p>
+            <p>🟣 <b>紫球：</b>大而慢，低分，<span style="color:#aa00ff">漏掉不扣血</span>。</p>
+            <p>💣 <b>炸弹：</b><span class="highlight-red">红/橙雷扣血</span>，绝对不要切！</p>
+            <p>✚ <b>医疗：</b><span class="highlight-green">绿十字</span>可恢复1~3点血量。</p>
+            <p>🛡️ <b>护盾：</b><span class="highlight-blue">蓝菱球，提供 5.0 点护盾能量！</span></p>
+            <p>⚡ <b style="color:#ffaa00">相对论效应：</b>倍速越高，护盾能量消耗越快！</p>
+        </div>
+        <button onclick="startGame()">启动防线</button>
+    </div>
+
+    <div id="ui">
+        <h2>得分: <span id="score">0</span></h2>
+        <div class="stats">
+            连线: <span id="lines" style="color:#fff;">0</span> | 
+            状态: <span id="speedUI">1.0x 倍速</span>
+        </div>
+        <div id="lives">❤️❤️❤️❤️❤️❤️❤️❤️❤️❤️</div>
+        <div id="shieldUI">🛡️ 能量: 0.0</div>
+    </div>
+
+    <div id="gameoverScreen" class="screen" style="display: none;">
+        <h2>防线崩溃</h2>
+        <p>最终得分: <span id="finalScore" style="color:#00ffff; font-size: 32px; font-weight:bold;">0</span></p>
+        <button onclick="startGame()">重新部署</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameState = 'START'; 
+        let score = 0;
+        let lives = 10;
+        const maxLives = 10;
+        
+        let speedMultiplier = 1.0; 
+        let spawnChance = 0.02;
+        
+        // 核心改动：不再使用绝对时间戳，而是使用护盾能量
+        let shieldEnergy = 0; 
+        let lastFrameTime = 0; // 用于计算时间差(dt)
+
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let activeTouches = {};
+        let targets = [];
+        let particles = [];
+        let floatTexts = [];
+
+        function handleInput(e, type) {
+            if(gameState !== 'PLAYING') return;
+            if(e.cancelable) e.preventDefault();
+            
+            if (type === 'touch') {
+                activeTouches = {};
+                for (let i = 0; i < e.touches.length; i++) {
+                    activeTouches[e.touches[i].identifier] = { x: e.touches[i].clientX, y: e.touches[i].clientY };
+                }
+            } else if (type === 'mousedown') {
+                activeTouches['mouse'] = { x: e.clientX, y: e.clientY };
+            } else if (type === 'mousemove' && activeTouches['mouse']) {
+                activeTouches['mouse'] = { x: e.clientX, y: e.clientY };
+            } else if (type === 'mouseup') {
+                delete activeTouches['mouse'];
+            }
+        }
+
+        canvas.addEventListener('touchstart', (e) => handleInput(e, 'touch'), {passive: false});
+        canvas.addEventListener('touchmove', (e) => handleInput(e, 'touch'), {passive: false});
+        canvas.addEventListener('touchend', (e) => handleInput(e, 'touch'), {passive: false});
+        canvas.addEventListener('touchcancel', (e) => handleInput(e, 'touch'), {passive: false});
+        canvas.addEventListener('mousedown', (e) => handleInput(e, 'mousedown'));
+        canvas.addEventListener('mousemove', (e) => handleInput(e, 'mousemove'));
+        window.addEventListener('mouseup', (e) => handleInput(e, 'mouseup'));
+
+        class Target {
+            constructor() {
+                let rand = Math.random();
+                
+                if (rand < 0.75) {
+                    this.category = 'normal';
+                    let sub = Math.random();
+                    if (sub < 0.2) { this.radius = 12; this.color = '#ffee00'; this.speedBase = 2.0; this.pts = 30; this.missDmg = 1; } 
+                    else if (sub < 0.6) { this.radius = 22; this.color = '#00ffff'; this.speedBase = 1.2; this.pts = 10; this.missDmg = 1; } 
+                    else { this.radius = 35; this.color = '#aa00ff'; this.speedBase = 0.7; this.pts = 5; this.missDmg = 0; } 
+                } 
+                else if (rand < 0.85) { 
+                    this.category = 'bomb';
+                    let sub = Math.random();
+                    if (sub < 0.4) { this.radius = 16; this.color = '#ff1111'; this.speedBase = 1.8; this.dmg = 2; } 
+                    else { this.radius = 28; this.color = '#ff7700'; this.speedBase = 0.9; this.dmg = 1; } 
+                } 
+                else if (rand < 0.95) { 
+                    this.category = 'heal';
+                    let sub = Math.random();
+                    if (sub < 0.6) { this.radius = 25; this.color = '#88ff88'; this.speedBase = 0.8; this.heal = 1; }
+                    else if (sub < 0.9) { this.radius = 18; this.color = '#00ff44'; this.speedBase = 1.3; this.heal = 2; }
+                    else { this.radius = 12; this.color = '#00ffaa'; this.speedBase = 2.2; this.heal = 3; }
+                } 
+                else { 
+                    this.category = 'shield';
+                    this.radius = 20; 
+                    this.color = '#0066ff'; 
+                    this.speedBase = 1.5;
+                }
+
+                let side = Math.floor(Math.random() * 4);
+                let targetX = canvas.width/2 + (Math.random() - 0.5) * canvas.width * 0.7;
+                let targetY = canvas.height/2 + (Math.random() - 0.5) * canvas.height * 0.7;
+
+                if (side === 0) { this.x = Math.random() * canvas.width; this.y = -this.radius - 20; }
+                else if (side === 1) { this.x = Math.random() * canvas.width; this.y = canvas.height + this.radius + 20; }
+                else if (side === 2) { this.x = -this.radius - 20; this.y = Math.random() * canvas.height; }
+                else { this.x = canvas.width + this.radius + 20; this.y = Math.random() * canvas.height; }
+
+                let angle = Math.atan2(targetY - this.y, targetX - this.x);
+                let finalSpeed = this.speedBase * speedMultiplier * (Math.random() * 0.5 + 1);
+                this.speedX = Math.cos(angle) * finalSpeed;
+                this.speedY = Math.sin(angle) * finalSpeed;
+            }
+
+            update() { this.x += this.speedX; this.y += this.speedY; }
+
+            draw() {
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color; ctx.fill();
+                
+                if(this.category === 'bomb') { 
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius * 0.5, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius * 0.2, 0, Math.PI * 2);
+                    ctx.fillStyle = 'white'; ctx.fill();
+                } else if (this.category === 'heal') { 
+                    ctx.fillStyle = 'white';
+                    let w = this.radius * 0.7; let h = this.radius * 0.25;
+                    ctx.fillRect(this.x - w/2, this.y - h/2, w, h); ctx.fillRect(this.x - h/2, this.y - w/2, h, w); 
+                } else if (this.category === 'shield') {
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y - this.radius*0.6);
+                    ctx.lineTo(this.x + this.radius*0.5, this.y);
+                    ctx.lineTo(this.x, this.y + this.radius*0.6);
+                    ctx.lineTo(this.x - this.radius*0.5, this.y);
+                    ctx.fill();
+                }
+            }
+
+            isOutOfBounds() {
+                let m = this.radius + 50; 
+                if (this.x < -m && this.speedX < 0) return true;
+                if (this.x > canvas.width + m && this.speedX > 0) return true;
+                if (this.y < -m && this.speedY < 0) return true;
+                if (this.y > canvas.height + m && this.speedY > 0) return true;
+                return false;
+            }
+        }
+
+        class FloatText {
+            constructor(x, y, text, color, size = 20) {
+                this.x = x; this.y = y; this.text = text; this.color = color; this.size = size;
+                this.life = 1.0; this.speedY = -1.5;
+            }
+            update() { this.y += this.speedY; this.life -= 0.02; }
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.font = `bold ${this.size}px sans-serif`;
+                ctx.fillText(this.text, this.x - 15, this.y);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                this.size = Math.random() * 5 + 2;
+                let angle = Math.random() * Math.PI * 2;
+                let speed = Math.random() * 8 + 2;
+                this.speedX = Math.cos(angle) * speed;
+                this.speedY = Math.sin(angle) * speed;
+                this.life = 1.0;
+            }
+            update() { this.x += this.speedX; this.y += this.speedY; this.life -= 0.03; }
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function pointToLineDistance(px, py, x1, y1, x2, y2) {
+            let A = px - x1, B = py - y1, C = x2 - x1, D = y2 - y1;
+            let dot = A * C + B * D, len_sq = C * C + D * D, param = -1;
+            if (len_sq != 0) param = dot / len_sq;
+            let xx, yy;
+            if (param < 0) { xx = x1; yy = y1; } else if (param > 1) { xx = x2; yy = y2; } else { xx = x1 + param * C; yy = y1 + param * D; }
+            let dx = px - xx, dy = py - yy;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function createExplosion(x, y, color) { for(let i=0; i<15; i++) particles.push(new Particle(x, y, color)); }
+
+        function updateUI() {
+            document.getElementById('score').innerText = Math.floor(score);
+            document.getElementById('lives').innerText = '❤️'.repeat(Math.max(0, lives)) + '🖤'.repeat(Math.max(0, maxLives - lives));
+            
+            let calcSpeed = Math.min(1.0 + (score / 300) * 0.5, 5.0);
+            speedMultiplier = calcSpeed;
+            spawnChance = 0.02 + (calcSpeed * 0.005); 
+
+            let speedText = document.getElementById('speedUI');
+            speedText.innerText = speedMultiplier.toFixed(1) + 'x 倍速';
+            if(speedMultiplier >= 4) speedText.style.color = '#ff1111';
+            else if(speedMultiplier >= 2) speedText.style.color = '#ffaa00';
+            else speedText.style.color = '#00ffff';
+        }
+
+        window.startGame = function() {
+            score = 0; lives = 10; speedMultiplier = 1.0; spawnChance = 0.02; 
+            shieldEnergy = 0; // 重置能量
+            lastFrameTime = Date.now(); // 记录起始时间
+            
+            targets = []; particles = []; floatTexts = []; activeTouches = {};
+            
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameoverScreen').style.display = 'none';
+            document.getElementById('ui').style.display = 'block';
+            
+            gameState = 'PLAYING';
+            updateUI();
+            gameLoop();
+        }
+
+        function gameOver() {
+            gameState = 'GAMEOVER';
+            document.getElementById('ui').style.display = 'none';
+            document.getElementById('gameoverScreen').style.display = 'flex';
+            document.getElementById('finalScore').innerText = Math.floor(score);
+        }
+
+        function gameLoop() {
+            if (gameState !== 'PLAYING') return;
+
+            // --- 核心时间同步逻辑 ---
+            let now = Date.now();
+            let dt = (now - lastFrameTime) / 1000; // 距离上一帧经过了多少秒
+            lastFrameTime = now;
+            
+            // 防止玩家切到后台导致 dt 巨大，导致一瞬间扣完护盾
+            if (dt > 0.1) dt = 0.016; 
+
+            // 如果有护盾，根据当前倍速消耗能量
+            if (shieldEnergy > 0) {
+                shieldEnergy -= dt * speedMultiplier; 
+                if (shieldEnergy < 0) shieldEnergy = 0;
+            }
+
+            // 护盾 UI 渲染
+            let shieldEl = document.getElementById('shieldUI');
+            if (shieldEnergy > 0) {
+                shieldEl.style.display = 'block';
+                shieldEl.innerText = `🛡️ 能量: ${shieldEnergy.toFixed(1)}`;
+                // 警报颜色：快结束时变色
+                if (shieldEnergy < 1.5) shieldEl.style.color = '#ffaa00';
+                else shieldEl.style.color = '#00aaff';
+                
+                ctx.fillStyle = 'rgba(5, 15, 30, 0.4)';
+            } else {
+                shieldEl.style.display = 'none';
+                ctx.fillStyle = 'rgba(5, 5, 16, 0.4)';
+            }
+            
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            let points = Object.values(activeTouches);
+            let lineSegments = [];
+            let linesCount = 0;
+
+            if (points.length > 0) {
+                let pointColor = shieldEnergy > 0 ? '#00aaff' : '#00ffff';
+                ctx.fillStyle = pointColor;
+                points.forEach(p => {
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 20, 0, Math.PI * 2); ctx.fill();
+                });
+
+                ctx.beginPath();
+                for (let i = 0; i < points.length; i++) {
+                    for (let j = i + 1; j < points.length; j++) {
+                        ctx.moveTo(points[i].x, points[i].y); ctx.lineTo(points[j].x, points[j].y);
+                        linesCount++;
+                        lineSegments.push({ x1: points[i].x, y1: points[i].y, x2: points[j].x, y2: points[j].y });
+                    }
+                }
+                ctx.strokeStyle = shieldEnergy > 0 ? 'rgba(0, 170, 255, 0.5)' : 'rgba(0, 255, 255, 0.4)'; 
+                ctx.lineWidth = 12; ctx.stroke(); 
+                ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke(); 
+            }
+            document.getElementById('lines').innerText = linesCount;
+
+            if (Math.random() < spawnChance) targets.push(new Target());
+
+            for (let i = targets.length - 1; i >= 0; i--) {
+                let t = targets[i];
+                t.update(); t.draw();
+
+                if (t.isOutOfBounds()) {
+                    if (t.category === 'normal' && t.missDmg > 0) {
+                        lives -= t.missDmg;
+                        let textX = Math.max(30, Math.min(t.x, canvas.width - 60));
+                        let textY = Math.max(30, Math.min(t.y, canvas.height - 30));
+                        floatTexts.push(new FloatText(textX, textY, `漏球 -${t.missDmg}`, "#ff3366"));
+                        updateUI();
+                        if (lives <= 0) gameOver();
+                    }
+                    targets.splice(i, 1);
+                    continue;
+                }
+
+                let caught = false;
+                for (let seg of lineSegments) {
+                    if (pointToLineDistance(t.x, t.y, seg.x1, seg.y1, seg.x2, seg.y2) < t.radius) { caught = true; break; }
+                }
+
+                if (caught) {
+                    createExplosion(t.x, t.y, t.color);
+                    
+                    if (t.category === 'bomb') {
+                        if (shieldEnergy > 0) {
+                            floatTexts.push(new FloatText(t.x, t.y, "🛡️ 免疫", "#00aaff", 26));
+                        } else {
+                            lives -= t.dmg;
+                            floatTexts.push(new FloatText(t.x, t.y, `触雷 -${t.dmg}`, "#ff1111", 26));
+                            canvas.style.transform = `translate(${(Math.random()-0.5)*30}px, ${(Math.random()-0.5)*30}px)`;
+                            setTimeout(() => canvas.style.transform = 'translate(0,0)', 100);
+                            if (lives <= 0) gameOver();
+                        }
+                    } 
+                    else if (t.category === 'heal') {
+                        if (lives < maxLives) {
+                            let healAmt = Math.min(t.heal, maxLives - lives);
+                            lives += healAmt;
+                            floatTexts.push(new FloatText(t.x, t.y, `+${healAmt} HP`, "#00ff44", 24));
+                        } else {
+                            score += 15 * speedMultiplier; 
+                            floatTexts.push(new FloatText(t.x, t.y, "满血加成", "#00ff44"));
+                        }
+                    } 
+                    else if (t.category === 'shield') {
+                        // 核心改动：恢复 5.0 点护盾能量
+                        shieldEnergy = 5.0;
+                        floatTexts.push(new FloatText(t.x, t.y, "🛡️ 能量充满", "#00aaff", 26));
+                    }
+                    else {
+                        let pts = Math.floor(t.pts * (1 + linesCount * 0.2) * speedMultiplier);
+                        score += pts;
+                        floatTexts.push(new FloatText(t.x, t.y, `+${pts}`, t.color));
+                    }
+                    
+                    updateUI();
+                    targets.splice(i, 1);
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i]; p.update(); p.draw();
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+            for (let i = floatTexts.length - 1; i >= 0; i--) {
+                let f = floatTexts[i]; f.update(); f.draw();
+                if (f.life <= 0) floatTexts.splice(i, 1);
+            }
+
+            if (gameState === 'PLAYING') requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>
