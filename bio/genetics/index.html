@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>孟德尔遗传学模拟器</title>
+    <title>孟德尔遗传学高级模拟器</title>
     <style>
         :root {
             --primary: #4CAF50;
@@ -12,104 +12,54 @@
             --border: #ccc;
         }
         body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            overflow: hidden; /* 防止拖拽出滚动条 */
-            user-select: none;
+            margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color); overflow: hidden; user-select: none;
         }
         /* 顶部工具栏 */
         #toolbar {
-            position: fixed;
-            top: 0; left: 0; width: 100%;
-            height: 60px;
-            background-color: #333;
-            color: white;
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 1000;
+            position: fixed; top: 0; left: 0; width: 100%; height: 60px;
+            background-color: #333; color: white; display: flex; align-items: center;
+            padding: 0 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000;
         }
         button {
-            padding: 8px 16px;
-            margin-right: 15px;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.2s;
+            padding: 8px 16px; margin-right: 15px; background-color: var(--primary); color: white;
+            border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.2s;
         }
         button:hover { background-color: var(--primary-dark); }
-        .btn-exp { background-color: #2196F3; }
-        .btn-exp:hover { background-color: #1976D2; }
+        .btn-exp { background-color: #2196F3; } .btn-exp:hover { background-color: #1976D2; }
+        .btn-set { background-color: #FF9800; } .btn-set:hover { background-color: #F57C00; }
+        .btn-help { background-color: #9C27B0; } .btn-help:hover { background-color: #7B1FA2; }
         
-        #toast {
-            margin-left: auto; margin-right: 40px;
-            color: #FFEB3B; font-weight: bold;
-        }
+        #toast { margin-left: auto; margin-right: 40px; color: #FFEB3B; font-weight: bold; }
 
         /* 工作区与画布 */
         #workspace {
-            position: absolute;
-            top: 60px; left: 0; right: 0; bottom: 0;
-            background-image: radial-gradient(#d1d9e6 1px, transparent 1px);
-            background-size: 20px 20px;
+            position: absolute; top: 60px; left: 0; right: 0; bottom: 0;
+            background-image: radial-gradient(#d1d9e6 1px, transparent 1px); background-size: 20px 20px;
         }
         #canvas-svg {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; /* 让鼠标穿透SVG点击到方格 */
-            z-index: 1;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;
         }
 
         /* 生物方格卡片 */
         .organism-card {
-            position: absolute;
-            width: 180px;
-            background: var(--card-bg);
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
+            position: absolute; width: 220px; background: var(--card-bg);
+            border: 2px solid var(--border); border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 10; display: flex; flex-direction: column;
         }
-        .organism-card.active-target {
-            border-color: #2196F3;
-            box-shadow: 0 0 10px #2196F3;
-        }
+        .organism-card.active-target { border-color: #2196F3; box-shadow: 0 0 10px #2196F3; }
         .card-header {
-            height: 25px;
-            background: #e0e0e0;
-            border-top-left-radius: 6px;
-            border-top-right-radius: 6px;
-            cursor: move;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            color: #555;
+            height: 25px; background: #e0e0e0; border-top-left-radius: 6px; border-top-right-radius: 6px;
+            cursor: move; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #555;
         }
-        .card-body {
-            padding: 10px;
-            pointer-events: auto;
-        }
+        .card-body { padding: 10px; pointer-events: auto; }
         .input-group { margin-bottom: 10px; }
         .input-group label { display: block; font-size: 12px; margin-bottom: 3px; color: #333; }
         .input-group input[type="text"] {
-            width: 100%; padding: 4px; box-sizing: border-box;
-            border: 1px solid #ccc; border-radius: 3px;
+            width: 100%; padding: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 3px; font-family: monospace;
         }
-        .sex-group {
-            display: flex; justify-content: space-around; font-size: 14px;
-        }
-        .card-actions {
-            display: flex; border-top: 1px solid #eee;
-        }
+        .sex-group { display: flex; justify-content: space-around; font-size: 14px; }
+        .card-actions { display: flex; border-top: 1px solid #eee; }
         .card-actions button {
             flex: 1; margin: 0; border-radius: 0; padding: 6px 0;
             background: transparent; color: #333; font-weight: normal; font-size: 12px;
@@ -117,21 +67,26 @@
         .card-actions button:hover { background: #eee; }
         .card-actions button.btn-delete { color: #f44336; }
         
-        /* 模态框 (实验结果) */
-        #modal-overlay {
+        /* 模态框通用 */
+        .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); z-index: 2000;
-            display: none; justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.5); z-index: 2000; display: none; justify-content: center; align-items: center;
         }
-        #modal-content {
-            background: white; padding: 20px; border-radius: 8px;
-            width: 400px; max-height: 80vh; overflow-y: auto;
+        .modal-content {
+            background: white; padding: 20px; border-radius: 8px; max-height: 85vh; overflow-y: auto;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3); user-select: text;
         }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-        th { background-color: #f2f2f2; }
         .close-btn { background: #f44336; float: right; margin: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px;}
+        th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; }
+        th { background-color: #f2f2f2; position: sticky; top: 0; }
+        
+        /* 设置与帮助样式 */
+        .form-row { margin-bottom: 15px; }
+        .form-row label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        .form-row input[type="number"], .form-row textarea { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .flex-table-container { display: flex; gap: 20px; align-items: flex-start; }
+        .flex-table { flex: 1; min-width: 300px; }
     </style>
 </head>
 <body>
@@ -139,148 +94,360 @@
     <div id="toolbar">
         <button onclick="createOrganism()">➕ 添加生物</button>
         <button class="btn-exp" onclick="startExperiment()">🧪 启动交配实验</button>
+        <button class="btn-set" onclick="openModal('settings-overlay')">⚙ 高级设置</button>
+        <button class="btn-help" onclick="openModal('help-overlay')">❓ 格式帮助</button>
         <div id="toast"></div>
     </div>
 
     <div id="workspace">
-        <!-- SVG用于绘制连线 -->
         <svg id="canvas-svg">
             <line id="cross-line" x1="0" y1="0" x2="0" y2="0" stroke="#FF5722" stroke-width="3" stroke-dasharray="5,5" style="display:none;" />
         </svg>
     </div>
 
     <!-- 实验结果模态框 -->
-    <div id="modal-overlay">
-        <div id="modal-content">
-            <button class="close-btn" onclick="closeModal()">关闭</button>
+    <div id="result-overlay" class="modal-overlay">
+        <div class="modal-content" style="width: 800px;">
+            <button class="close-btn" onclick="closeModal('result-overlay')">关闭</button>
             <h2 style="margin-top:0;">实验统计结果</h2>
             <p id="exp-info"></p>
-            <table>
-                <thead>
-                    <tr><th>子代基因型</th><th>数量</th><th>比例</th></tr>
-                </thead>
-                <tbody id="exp-tbody"></tbody>
-            </table>
+            <div class="flex-table-container">
+                <div class="flex-table">
+                    <h4>表现型统计</h4>
+                    <table>
+                        <thead><tr><th>表现型 (显/隐性)</th><th>数量</th><th>比例</th></tr></thead>
+                        <tbody id="tbody-pheno"></tbody>
+                    </table>
+                </div>
+                <div class="flex-table">
+                    <h4>基因型详细统计</h4>
+                    <table>
+                        <thead><tr><th>基因型</th><th>数量</th><th>比例</th></tr></thead>
+                        <tbody id="tbody-geno"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置模态框 -->
+    <div id="settings-overlay" class="modal-overlay">
+        <div class="modal-content" style="width: 400px;">
+            <button class="close-btn" onclick="closeModal('settings-overlay')">取消</button>
+            <h2 style="margin-top:0;">高级遗传设置</h2>
+            <div class="form-row">
+                <label>同源染色体交叉互换率 (0 - 50%):</label>
+                <input type="number" id="setting-recomb" value="0" min="0" max="50">
+                <small style="color:gray;">* 仅对包含多个基因的同一染色体(连锁)生效。</small>
+            </div>
+            <div class="form-row">
+                <label>配子致死率配置 (每行一条规则):</label>
+                <textarea id="setting-lethal" rows="4" placeholder="格式 -> 配子片段: 致死概率%&#10;例:&#10;a: 100&#10;AB: 50"></textarea>
+                <small style="color:gray;">* 例如 "a:100" 表示含a的配子有100%概率死亡。</small>
+            </div>
+            <button onclick="saveSettings()">✔ 保存设置</button>
+        </div>
+    </div>
+
+    <!-- 帮助模态框 -->
+    <div id="help-overlay" class="modal-overlay">
+        <div class="modal-content" style="width: 500px; font-size: 14px; line-height: 1.6;">
+            <button class="close-btn" onclick="closeModal('help-overlay')">关闭</button>
+            <h2 style="margin-top:0;">基因输入格式帮助</h2>
+            <p>本模拟器采用“染色体组”的形式解析基因：同一对同源染色体用 <code>/</code> 分隔，不同的染色体用空格或 <code>;</code> 分隔。</p>
+            <ul>
+                <li><b>自由组合（独立遗传）：</b><br>
+                    标准写法：<code>A/a B/b</code><br>
+                    (自动兼容写法：输入 <code>AaBb</code> 系统会自动解析为独立)</li>
+                <li><b>基因连锁（同一染色体上）：</b><br>
+                    写法：<code>AB/ab</code><br>
+                    (表示A和B在同一条染色体，a和b在对应的同源染色体上)</li>
+                <li><b>伴性遗传（X、Y染色体）：</b><br>
+                    伴X写法：<code>X(A)/X(a)</code> 或雄性 <code>X(A)/Y</code><br>
+                    (提示：Y染色体强制为雄性，带有XX强制为雌性)</li>
+            </ul>
+            <p>※ 显隐性规则：字母大写代表显性性状(表型显示 <code>A_</code>)，字母小写代表隐性(表型显示 <code>aa</code>)。</p>
         </div>
     </div>
 
 <script>
     // 系统状态
-    let entities = {}; // 存储所有生物的数据
+    let entities = {}; 
     let entityIdCounter = 0;
-    
-    // 拖拽状态
     let isDragging = false;
     let dragTarget = null;
     let offsetX = 0, offsetY = 0;
-
-    // 单次连线交配状态
     let isCrossing = false;
     let sourceCrossId = null;
-
-    // 实验模式状态
-    let expMode = 0; // 0: 关闭, 1: 等待选亲本A, 2: 等待选亲本B
+    let expMode = 0; 
     let expParentA = null;
+
+    // 全局遗传配置
+    let globalSettings = { recombRate: 0.0, lethalRules: {} };
 
     const workspace = document.getElementById('workspace');
     const svgLine = document.getElementById('cross-line');
     const toastEl = document.getElementById('toast');
 
-    // 提示信息控制
     function showToast(msg) { toastEl.innerText = msg; }
     function clearToast() { toastEl.innerText = ''; }
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    // ================== 数据与核心逻辑 ==================
-
-    // 解析基因输入 (例："Aa,Bb" 或 "AaBb" -> { A:['A','a'], B:['B','b'] })
-    function parseGenotype(str) {
-        str = str.replace(/[^a-zA-Z]/g, ''); // 移除非字母
-        if (str.length % 2 !== 0) return null; // 必须成对
+    function saveSettings() {
+        let recombInput = parseFloat(document.getElementById('setting-recomb').value);
+        if (!isNaN(recombInput)) globalSettings.recombRate = Math.min(0.5, Math.max(0, recombInput / 100));
         
+        let lethalInput = document.getElementById('setting-lethal').value.split('\n');
+        globalSettings.lethalRules = {};
+        for (let line of lethalInput) {
+            line = line.trim();
+            if (!line) continue;
+            let parts = line.split(/[:=：]/);
+            if (parts.length === 2) {
+                let pattern = parts[0].trim();
+                let rate = parseFloat(parts[1].replace('%', '').trim());
+                if (!isNaN(rate)) globalSettings.lethalRules[pattern] = Math.min(1.0, Math.max(0, rate / 100));
+            }
+        }
+        closeModal('settings-overlay');
+        showToast("高级设置已更新生效！");
+    }
+
+    // ================== 高级遗传学引擎 ==================
+
+    // 解析输入的基因型字符串为染色体组结构
+    function parseGenotypeString(str) {
+        str = str.replace(/\s+/g, ' ').trim();
+        if (!str.includes('/') && !str.includes(' ') && /^[a-zA-Z]+$/.test(str)) {
+            let pairs = [];
+            for (let i=0; i<str.length; i+=2) pairs.push(str[i] + '/' + str[i+1]);
+            str = pairs.join(' ');
+        }
+        str = str.replace(/X\((.*?)\)Y/gi, 'X($1)/Y');
+        str = str.replace(/X\((.*?)\)X\((.*?)\)/gi, 'X($1)/X($2)');
+
+        let parts = str.split(/[\s,;]+/);
+        let genome = [];
+        for (let part of parts) {
+            if (!part) continue;
+            let chromosomes = part.split('/');
+            if (chromosomes.length !== 2) return { error: `格式错误: "${part}" 应包含两条同源染色体，用 '/' 分隔。` };
+            genome.push(chromosomes);
+        }
+        return { genome };
+    }
+
+    // 推断表现型 (将大写视为显性，小写视为隐性)
+    function getPhenotype(genome) {
         let traits = {};
-        for (let i = 0; i < str.length; i++) {
-            let char = str[i];
-            let key = char.toUpperCase();
-            if (!traits[key]) traits[key] = [];
-            traits[key].push(char);
+        for (let pair of genome) {
+            for (let chr of pair) {
+                let genesStr = chr;
+                if (chr.startsWith('X(') || chr.startsWith('Y(')) {
+                    let match = chr.match(/[XY]\((.*?)\)/);
+                    if (match) genesStr = match[1];
+                } else if (chr === 'Y' || chr === 'X') {
+                    genesStr = '';
+                }
+                for (let char of genesStr) {
+                    if (/[a-zA-Z]/.test(char)) {
+                        let key = char.toUpperCase();
+                        if (!traits[key]) traits[key] = { hasDom: false, hasRec: false };
+                        if (char === char.toUpperCase()) traits[key].hasDom = true;
+                        else traits[key].hasRec = true;
+                    }
+                }
+            }
+        }
+        let phenoParts = [];
+        let keys = Object.keys(traits).sort();
+        for (let k of keys) {
+            if (traits[k].hasDom) phenoParts.push(k + "_");
+            else if (traits[k].hasRec) phenoParts.push(k.toLowerCase() + k.toLowerCase());
+        }
+        if (phenoParts.length === 0) return "无特定表型";
+        return phenoParts.join(' ');
+    }
+
+    // 根据染色体判断强制性别 (伴性逻辑)
+    function determineSex(genome) {
+        let hasY = false; let xCount = 0;
+        for (let pair of genome) {
+            for (let chr of pair) {
+                if (chr.startsWith('Y')) hasY = true;
+                if (chr.startsWith('X')) xCount++;
+            }
+        }
+        if (hasY) return { sexM: true, sexF: false }; 
+        if (xCount >= 2) return { sexM: false, sexF: true };
+        return null;
+    }
+
+    // 计算一对同源染色体发生交叉互换产生的配子及其概率
+    function getGametesForPair(c1, c2, r) {
+        if (c1.startsWith('X') || c2.startsWith('Y') || c1.startsWith('Y') || c2.startsWith('X')) {
+            return [{g: c1, p: 0.5}, {g: c2, p: 0.5}]; // 性染色体不重组
+        }
+        if (c1.length !== c2.length || c1.length <= 1) {
+            return [{g: c1, p: 0.5}, {g: c2, p: 0.5}]; 
         }
         
-        // 验证每种基因是否恰好是2个等位基因 (例如不允许 AAA)
-        for (let key in traits) {
-            if (traits[key].length !== 2) return null;
-            // 规范化排序: 大写在前 Aa
-            traits[key].sort((a, b) => (a < b ? -1 : 1));
+        let gametes = {};
+        let n = c1.length;
+        let totalCombinations = 1 << n;
+        for (let i = 0; i < totalCombinations; i++) {
+            let gamete = ""; let crossovers = 0;
+            let prevSource = i & 1;
+            gamete += (prevSource === 0) ? c1[0] : c2[0];
+            for (let j = 1; j < n; j++) {
+                let currentSource = (i >> j) & 1;
+                if (currentSource !== prevSource) { crossovers++; prevSource = currentSource; }
+                gamete += (currentSource === 0) ? c1[j] : c2[j];
+            }
+            let prob = Math.pow(r, crossovers) * Math.pow(1 - r, n - 1 - crossovers) * 0.5;
+            if (!gametes[gamete]) gametes[gamete] = 0;
+            gametes[gamete] += prob;
         }
-        return traits;
+        let result = [];
+        for (let g in gametes) if (gametes[g] > 0) result.push({g: g, p: gametes[g]});
+        return result;
+    }
+
+    // 结合致死率规则，生成生物体能产生的所有有效配子分布
+    function generateAllGametes(genome, recombRate, lethalRules) {
+        let allGametes = [{ g: [], p: 1.0 }];
+        for (let pair of genome) {
+            let pairGametes = getGametesForPair(pair[0], pair[1], recombRate);
+            let nextAll = [];
+            for (let ag of allGametes) {
+                for (let pg of pairGametes) {
+                    nextAll.push({ g: [...ag.g, pg.g], p: ag.p * pg.p });
+                }
+            }
+            allGametes = nextAll;
+        }
+        
+        let totalP = 0;
+        for (let gObj of allGametes) {
+            let gStr = gObj.g.join('');
+            let survivalRate = 1.0;
+            for (let [pattern, deathRate] of Object.entries(lethalRules)) {
+                if (gStr.includes(pattern)) survivalRate *= (1 - deathRate);
+            }
+            gObj.p *= survivalRate;
+            totalP += gObj.p;
+        }
+        if (totalP === 0) return []; // 致死导致不育
+        for (let gObj of allGametes) gObj.p /= totalP; // 归一化存活配子
+        return allGametes;
     }
 
     // 验证能否交配并返回亲本解析结果
-    function validateCross(id1, id2) {
+    function validateCrossNew(id1, id2) {
         let p1 = entities[id1], p2 = entities[id2];
-        let t1 = parseGenotype(p1.geno);
-        let t2 = parseGenotype(p2.geno);
+        let res1 = parseGenotypeString(p1.geno);
+        let res2 = parseGenotypeString(p2.geno);
+        if (res1.error) return res1;
+        if (res2.error) return res2;
         
-        if (!t1 || !t2) return { valid: false, msg: "基因格式错误，需成对字母(如AaBb)" };
+        let ok = (id1 === id2) ? (p1.sexM && p1.sexF) : ((p1.sexM && p2.sexF) || (p1.sexF && p2.sexM));
+        if (!ok) return { error: "性别不匹配，无法交配！" };
+        if (res1.genome.length !== res2.genome.length) return { error: "染色体对数不一致，存在生殖隔离！" };
         
-        // 判断物种 (比较包含的基因类型字母是否一致)
-        let s1 = Object.keys(t1).sort().join('');
-        let s2 = Object.keys(t2).sort().join('');
-        if (s1 !== s2) return { valid: false, msg: "基因种类不一致，属于不同物种，存在生殖隔离！" };
-
-        // 验证性别
-        let ok = false;
-        if (id1 === id2) {
-            // 自交必须是雌雄同体
-            ok = (p1.sexM && p1.sexF);
-        } else {
-            ok = (p1.sexM && p2.sexF) || (p1.sexF && p2.sexM);
-        }
-        if (!ok) return { valid: false, msg: "性别不匹配，无法交配！" };
-
-        return { valid: true, t1: t1, t2: t2 };
+        return { valid: true, g1: res1.genome, g2: res2.genome, p1: p1, p2: p2 };
     }
 
-    // 获取配子集合 (笛卡尔积)
-    function getGametes(traits) {
-        let keys = Object.keys(traits).sort();
-        let gametes = [''];
-        for (let key of keys) {
-            let temp = [];
-            let alleles = traits[key];
-            for (let g of gametes) {
-                temp.push(g + alleles[0]);
-                temp.push(g + alleles[1]);
+    // 生成单次子代基因组 (考虑所有概率与重组投掷骰子)
+    function generateSingleChildNew(genome1, genome2) {
+        let gametes1 = generateAllGametes(genome1, globalSettings.recombRate, globalSettings.lethalRules);
+        let gametes2 = generateAllGametes(genome2, globalSettings.recombRate, globalSettings.lethalRules);
+        if (gametes1.length === 0 || gametes2.length === 0) return null; // 不育
+        
+        let pickGamete = (gametes) => {
+            let r = Math.random(); let sum = 0;
+            for (let g of gametes) { sum += g.p; if (r <= sum) return g.g; }
+            return gametes[gametes.length-1].g;
+        };
+        
+        let g1 = pickGamete(gametes1), g2 = pickGamete(gametes2);
+        let combinedGenome = [];
+        for (let i = 0; i < g1.length; i++) {
+            let pair = [g1[i], g2[i]].sort((a,b) => {
+                if(a.startsWith('X') && b.startsWith('Y')) return -1;
+                if(a.startsWith('Y') && b.startsWith('X')) return 1;
+                return a.localeCompare(b);
+            });
+            combinedGenome.push(pair);
+        }
+        return combinedGenome;
+    }
+
+    // 实验模式：基于期望概率的高效批量模拟计算
+    function performExperiment(genome1, genome2, count, recombRate, lethalRules) {
+        let gametes1 = generateAllGametes(genome1, recombRate, lethalRules);
+        let gametes2 = generateAllGametes(genome2, recombRate, lethalRules);
+        if (gametes1.length === 0 || gametes2.length === 0) return { error: "因配子致死率过高，导致一方或双方无法产生有效配子，完全不育！" };
+        
+        let zygotPool = [];
+        for (let g1 of gametes1) {
+            for (let g2 of gametes2) {
+                let combinedGenome = [];
+                // 修复：g1 和 g2 是对象 {g: Array, p: number}，读取基因须用 g1.g[i]
+                for (let i = 0; i < g1.g.length; i++) {
+                    let pair = [g1.g[i], g2.g[i]].sort((a,b) => {
+                        if(a.startsWith('X') && b.startsWith('Y')) return -1;
+                        if(a.startsWith('Y') && b.startsWith('X')) return 1;
+                        return a.localeCompare(b);
+                    });
+                    combinedGenome.push(pair);
+                }
+                let genoStr = combinedGenome.map(p => p[0] + '/' + p[1]).join('; ');
+                let phenoStr = getPhenotype(combinedGenome);
+                zygotPool.push({ genoStr, phenoStr, prob: g1.p * g2.p });
             }
-            gametes = temp;
         }
-        return gametes;
-    }
-
-    // 结合配子生成子代基因型
-    function combineGametes(g1, g2) {
-        let chars1 = g1.split(''), chars2 = g2.split('');
-        let traits = [];
-        for (let i = 0; i < chars1.length; i++) {
-            let alleles = [chars1[i], chars2[i]];
-            alleles.sort((a, b) => (a < b ? -1 : 1)); // 大写在前
-            traits.push(alleles.join(''));
+        
+        let merged = {};
+        for (let z of zygotPool) {
+            if (!merged[z.genoStr]) merged[z.genoStr] = { prob: 0, pheno: z.phenoStr };
+            merged[z.genoStr].prob += z.prob;
         }
-        return traits.join('');
+
+        let results = { genotypic: {}, phenotypic: {} };
+        let probArray = Object.entries(merged).map(([geno, data]) => ({ geno, pheno: data.pheno, prob: data.prob }));
+        
+        // 期望值下放分配，加上随机余数分配，确保海量计算不卡顿且兼具蒙特卡洛随机性
+        let remaining = count;
+        let poolForRandom = [];
+        for (let item of probArray) {
+            let expected = Math.floor(item.prob * count);
+            if (expected > 0) {
+                results.genotypic[item.geno] = expected;
+                results.phenotypic[item.pheno] = (results.phenotypic[item.pheno] || 0) + expected;
+                remaining -= expected;
+            }
+            poolForRandom.push(item);
+        }
+        
+        for (let i = 0; i < remaining; i++) {
+            let r = Math.random(); let sum = 0;
+            for (let item of poolForRandom) {
+                sum += item.prob;
+                if (r <= sum) {
+                    results.genotypic[item.geno] = (results.genotypic[item.geno] || 0) + 1;
+                    results.phenotypic[item.pheno] = (results.phenotypic[item.pheno] || 0) + 1;
+                    break;
+                }
+            }
+        }
+        return results;
     }
 
-    // 单次随机生成一个子代
-    function generateSingleChild(t1, t2) {
-        let gametes1 = getGametes(t1);
-        let gametes2 = getGametes(t2);
-        let g1 = gametes1[Math.floor(Math.random() * gametes1.length)];
-        let g2 = gametes2[Math.floor(Math.random() * gametes2.length)];
-        return combineGametes(g1, g2);
-    }
 
+    // ================== UI 与 交互逻辑 ==================
 
-    // ================== UI 与 交互 ==================
-
-    function createOrganism(x = 50, y = 50, geno = "Aa", sexM = true, sexF = true) {
+    function createOrganism(x = 50, y = 50, geno = "A/a B/b", sexM = true, sexF = true) {
         let id = "org_" + (++entityIdCounter);
         entities[id] = { id, x, y, geno, sexM, sexF };
         renderOrganism(id);
@@ -289,21 +456,19 @@
     function renderOrganism(id) {
         let data = entities[id];
         let el = document.createElement('div');
-        el.className = 'organism-card';
-        el.id = id;
-        el.style.left = data.x + 'px';
-        el.style.top = data.y + 'px';
+        el.className = 'organism-card'; el.id = id;
+        el.style.left = data.x + 'px'; el.style.top = data.y + 'px';
 
         el.innerHTML = `
             <div class="card-header">拖拽移动</div>
             <div class="card-body" onmousedown="event.stopPropagation()">
                 <div class="input-group">
-                    <label>遗传因子 (例: AaBb):</label>
+                    <label title="如 A/a; B/b, 连锁: AB/ab, 伴性: X(A)/Y">基因型因子 (详见帮助):</label>
                     <input type="text" id="geno_${id}" value="${data.geno}" onchange="updateData('${id}')">
                 </div>
                 <div class="sex-group">
-                    <label><input type="checkbox" id="sexM_${id}" ${data.sexM?'checked':''} onchange="updateData('${id}')"> ♂ 雄</label>
-                    <label><input type="checkbox" id="sexF_${id}" ${data.sexF?'checked':''} onchange="updateData('${id}')"> ♀ 雌</label>
+                    <label><input type="checkbox" id="sexM_${id}" ${data.sexM?'checked':''} onchange="updateData('${id}')"> ♂雄</label>
+                    <label><input type="checkbox" id="sexF_${id}" ${data.sexF?'checked':''} onchange="updateData('${id}')"> ♀雌</label>
                 </div>
             </div>
             <div class="card-actions" onmousedown="event.stopPropagation()">
@@ -312,29 +477,15 @@
                 <button class="btn-delete" onclick="deleteOrganism('${id}')">删除</button>
             </div>
         `;
-        
-        // 绑定卡片点击事件（用于实验模式和交配模式选定目标）
-        el.onmousedown = (e) => {
-            if(e.target.className === 'card-header') return; // 让拖拽逻辑处理
-            handleCardClick(id);
-        };
-
-        // 绑定拖拽事件
+        el.onmousedown = (e) => { if(e.target.className !== 'card-header') handleCardClick(id); };
         let header = el.querySelector('.card-header');
         header.onmousedown = (e) => {
-            if(expMode > 0 || isCrossing) {
-                handleCardClick(id); // 如果在特殊模式下，当做点击处理
-                return;
-            }
-            isDragging = true;
-            dragTarget = el;
+            if(expMode > 0 || isCrossing) { handleCardClick(id); return; }
+            isDragging = true; dragTarget = el;
             let rect = el.getBoundingClientRect();
-            // 计算鼠标相对卡片左上角的偏移量
-            offsetX = e.clientX - rect.left;
-            offsetY = e.clientY - rect.top;
-            el.style.zIndex = 20; // 拖拽时置顶
+            offsetX = e.clientX - rect.left; offsetY = e.clientY - rect.top;
+            el.style.zIndex = 20;
         };
-
         workspace.appendChild(el);
     }
 
@@ -343,187 +494,112 @@
         entities[id].sexM = document.getElementById(`sexM_${id}`).checked;
         entities[id].sexF = document.getElementById(`sexF_${id}`).checked;
     }
+    function cloneOrganism(id) { updateData(id); let d = entities[id]; createOrganism(d.x + 30, d.y + 30, d.geno, d.sexM, d.sexF); }
+    function deleteOrganism(id) { delete entities[id]; let el = document.getElementById(id); if(el) el.remove(); }
 
-    function cloneOrganism(id) {
-        updateData(id); // 确保数据最新
-        let d = entities[id];
-        createOrganism(d.x + 30, d.y + 30, d.geno, d.sexM, d.sexF);
-    }
-
-    function deleteOrganism(id) {
-        delete entities[id];
-        let el = document.getElementById(id);
-        if(el) el.remove();
-    }
-
-    // --- 拖拽全局事件 ---
     document.addEventListener('mousemove', (e) => {
         if (isDragging && dragTarget) {
-            let x = e.clientX - offsetX;
-            // 减去toolbar的高度
-            let y = e.clientY - offsetY - 60; 
-            if(x < 0) x = 0;
-            if(y < 0) y = 0;
-            dragTarget.style.left = x + 'px';
-            dragTarget.style.top = y + 'px';
-            entities[dragTarget.id].x = x;
-            entities[dragTarget.id].y = y;
+            let x = Math.max(0, e.clientX - offsetX);
+            let y = Math.max(0, e.clientY - offsetY - 60); 
+            dragTarget.style.left = x + 'px'; dragTarget.style.top = y + 'px';
+            entities[dragTarget.id].x = x; entities[dragTarget.id].y = y;
         }
-
-        // 绘制交配连线
         if (isCrossing && sourceCrossId) {
-            let srcEl = document.getElementById(sourceCrossId);
-            let rect = srcEl.getBoundingClientRect();
-            let srcX = rect.left + rect.width / 2;
-            let srcY = rect.top + rect.height / 2 - 60; // 减掉toolbar高度
-
-            svgLine.setAttribute('x1', srcX);
-            svgLine.setAttribute('y1', srcY);
-            svgLine.setAttribute('x2', e.clientX);
-            svgLine.setAttribute('y2', e.clientY - 60);
+            let srcEl = document.getElementById(sourceCrossId); let rect = srcEl.getBoundingClientRect();
+            svgLine.setAttribute('x1', rect.left + rect.width / 2); svgLine.setAttribute('y1', rect.top + rect.height / 2 - 60);
+            svgLine.setAttribute('x2', e.clientX); svgLine.setAttribute('y2', e.clientY - 60);
         }
     });
+    document.addEventListener('mouseup', () => { if (isDragging && dragTarget) { dragTarget.style.zIndex = 10; isDragging = false; dragTarget = null; } });
 
-    document.addEventListener('mouseup', () => {
-        if (isDragging && dragTarget) {
-            dragTarget.style.zIndex = 10;
-            isDragging = false;
-            dragTarget = null;
-        }
-    });
-
-    // --- 交配与连线逻辑 ---
     function startCross(id) {
-        if (expMode > 0) return; // 实验模式下禁用
-        isCrossing = true;
-        sourceCrossId = id;
-        svgLine.style.display = 'block';
-        showToast("请点击另一个方格进行交配 (点击自身可自交)");
+        if (expMode > 0) return; isCrossing = true; sourceCrossId = id; svgLine.style.display = 'block';
+        showToast("请点击另一个方格进行单次交配 (点击自身可自交)");
     }
+    function cancelCross() { isCrossing = false; sourceCrossId = null; svgLine.style.display = 'none'; clearToast(); }
 
-    function cancelCross() {
-        isCrossing = false;
-        sourceCrossId = null;
-        svgLine.style.display = 'none';
-        clearToast();
-    }
-
-    // 单击卡片时的路由分配
     function handleCardClick(id) {
-        if (isCrossing) {
-            doCross(sourceCrossId, id);
-        } else if (expMode === 1) {
-            expParentA = id;
-            expMode = 2;
-            document.getElementById(id).classList.add('active-target');
-            showToast("已选择亲本1，请选择第二个亲本 (点击同一个进行自交)");
+        if (isCrossing) { doCross(sourceCrossId, id); } 
+        else if (expMode === 1) {
+            expParentA = id; expMode = 2; document.getElementById(id).classList.add('active-target');
+            showToast("已选择亲本1，请选择亲本2");
         } else if (expMode === 2) {
             document.querySelectorAll('.active-target').forEach(e=>e.classList.remove('active-target'));
             runExperimentLogic(expParentA, id);
         }
     }
 
-    // 执行单次交配
     function doCross(id1, id2) {
         updateData(id1); updateData(id2);
-        let res = validateCross(id1, id2);
-        
-        if (!res.valid) {
-            alert(res.msg);
-        } else {
-            let childGeno = generateSingleChild(res.t1, res.t2);
-            // 计算新方格的位置 (两个亲本中间)
+        let res = validateCrossNew(id1, id2);
+        if (res.error) { alert(res.error); } 
+        else {
+            let childGenome = generateSingleChildNew(res.g1, res.g2);
+            if (!childGenome) { alert("因致死率导致未能产生有效的存活子代！"); return; }
+            let childGenoStr = childGenome.map(p => p[0] + '/' + p[1]).join('; ');
+            
+            // 判定性别
+            let sexInfo = determineSex(childGenome);
+            let isM = sexInfo ? sexInfo.sexM : (Math.random() > 0.5);
+            let isF = sexInfo ? sexInfo.sexF : (Math.random() > 0.5);
+            if (!isM && !isF) isM = true;
+            
             let el1 = document.getElementById(id1), el2 = document.getElementById(id2);
             let x = (parseInt(el1.style.left) + parseInt(el2.style.left)) / 2;
             let y = (parseInt(el1.style.top) + parseInt(el2.style.top)) / 2 + 50;
-            // 随机性别
-            let isM = Math.random() > 0.5;
-            let isF = Math.random() > 0.5;
-            if(!isM && !isF) isM = true; // 确保至少有一个性别
-            
-            createOrganism(x, y, childGeno, isM, isF);
+            createOrganism(x, y, childGenoStr, isM, isF);
         }
         cancelCross();
     }
 
-    // --- 实验模式逻辑 ---
     function startExperiment() {
-        if(Object.keys(entities).length === 0) {
-            alert("请先添加生物！"); return;
-        }
-        cancelCross(); // 覆盖其他状态
-        expMode = 1;
-        expParentA = null;
-        showToast("【实验模式】请点击选择第一个亲本");
+        if(Object.keys(entities).length === 0) { alert("请先添加生物！"); return; }
+        cancelCross(); expMode = 1; expParentA = null; showToast("【批量实验模式】请点击选择亲本1");
     }
 
     function runExperimentLogic(id1, id2) {
-        expMode = 0; // 重置状态
-        clearToast();
-        updateData(id1); updateData(id2);
+        expMode = 0; clearToast(); updateData(id1); updateData(id2);
+        let res = validateCrossNew(id1, id2);
+        if (res.error) { alert("验证失败: " + res.error); return; }
 
-        let res = validateCross(id1, id2);
-        if (!res.valid) {
-            alert("实验失败: " + res.msg); return;
-        }
+        let count = parseInt(prompt("验证成功！请输入要模拟的交配子代数量 (例如 10000):", "10000"));
+        if (isNaN(count) || count <= 0) return;
 
-        let countStr = prompt("验证成功！请输入要模拟的交配次数 (例如 1000):", "1000");
-        let count = parseInt(countStr);
-        if (isNaN(count) || count <= 0) {
-            alert("请输入有效的次数！"); return;
-        }
-
-        // 模拟实验
-        let results = {};
-        for(let i = 0; i < count; i++) {
-            let child = generateSingleChild(res.t1, res.t2);
-            if(!results[child]) results[child] = 0;
-            results[child]++;
-        }
+        let results = performExperiment(res.g1, res.g2, count, globalSettings.recombRate, globalSettings.lethalRules);
+        if (results.error) { alert(results.error); return; }
 
         showExperimentResults(entities[id1].geno, entities[id2].geno, count, results);
     }
 
     function showExperimentResults(g1, g2, total, results) {
-        let modal = document.getElementById('modal-overlay');
-        let info = document.getElementById('exp-info');
-        let tbody = document.getElementById('exp-tbody');
+        document.getElementById('exp-info').innerHTML = `亲代: <b style="font-family:monospace;">${g1}</b> × <b style="font-family:monospace;">${g2}</b> <br>存活总数: <b>${total}</b>`;
         
-        info.innerHTML = `亲代: <b>${g1}</b> × <b>${g2}</b> <br>总交配次数: <b>${total}</b>`;
-        tbody.innerHTML = '';
-
-        // 按数量排序输出
-        let sorted = Object.entries(results).sort((a,b) => b[1] - a[1]);
-
-        for(let [geno, count] of sorted) {
-            let tr = document.createElement('tr');
-            let percent = ((count / total) * 100).toFixed(2) + '%';
-            tr.innerHTML = `<td>${geno}</td><td>${count}</td><td>${percent}</td>`;
-            tbody.appendChild(tr);
+        let tbPheno = document.getElementById('tbody-pheno'); tbPheno.innerHTML = '';
+        let sortedPheno = Object.entries(results.phenotypic).sort((a,b) => b[1] - a[1]);
+        for(let [pheno, count] of sortedPheno) {
+            tbPheno.innerHTML += `<tr><td style="font-family:monospace;font-weight:bold">${pheno}</td><td>${count}</td><td>${((count/total)*100).toFixed(2)}%</td></tr>`;
         }
 
-        modal.style.display = 'flex';
-    }
-
-    function closeModal() {
-        document.getElementById('modal-overlay').style.display = 'none';
+        let tbGeno = document.getElementById('tbody-geno'); tbGeno.innerHTML = '';
+        let sortedGeno = Object.entries(results.genotypic).sort((a,b) => b[1] - a[1]);
+        for(let [geno, count] of sortedGeno) {
+            tbGeno.innerHTML += `<tr><td style="font-family:monospace;">${geno}</td><td>${count}</td><td>${((count/total)*100).toFixed(2)}%</td></tr>`;
+        }
+        openModal('result-overlay');
     }
 
     // 点击空白处取消连线/实验状态
     workspace.addEventListener('mousedown', (e) => {
         if (e.target === workspace || e.target === svgLine) {
             if (isCrossing) cancelCross();
-            if (expMode > 0) {
-                expMode = 0;
-                clearToast();
-                document.querySelectorAll('.active-target').forEach(el=>el.classList.remove('active-target'));
-            }
+            if (expMode > 0) { expMode = 0; clearToast(); document.querySelectorAll('.active-target').forEach(el=>el.classList.remove('active-target')); }
         }
     });
 
-    // 初始化时创建一个示例
-    createOrganism(100, 100, "AaBb", true, true);
-    createOrganism(350, 100, "AaBb", true, true);
+    // 默认提供独立遗传与伴性遗传的案例
+    createOrganism(100, 100, "A/a B/b", true, true);
+    createOrganism(350, 100, "X(A)/X(a)", false, true); // 伴性雌
+    createOrganism(600, 100, "X(a)/Y", true, false); // 伴性雄
 
 </script>
 </body>
